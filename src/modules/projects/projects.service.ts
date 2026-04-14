@@ -10,6 +10,7 @@ import { CreateProjectDto } from "./dto/create-project.dto";
 import { AppErrors, AppException } from "../../common/exceptions/exception";
 import { exit } from "process";
 import { successResponse } from "../../common/response";
+import { UpdateProjectDto } from "./dto/update-project.dto";
 
 @Injectable()
 export class ProjectsService {
@@ -210,5 +211,85 @@ export class ProjectsService {
         joinedAt: item.joinedAt,
       })),
     })
+  }
+
+  async updateProject(projectId: string, dto: UpdateProjectDto, currentUser: AuthenticatedUser){
+    const project = await this.projectRepository.findOne({
+      where: {id : projectId},
+      relations: {
+        owner: true,
+      }
+    })
+
+    if(!project){
+      throw AppErrors.project.projectNotFound();
+    }
+
+    const nextName = dto.name !== undefined ? dto.name.trim() : undefined;
+    const nextDescription = dto.description !== undefined? dto.description.trim() : undefined;
+
+    if(dto.name === undefined && dto.description === undefined){
+      throw AppErrors.project.projectUpdatePayloadEmpty();
+    }
+
+    if(dto.name !== undefined && !nextName){
+      throw AppErrors.common.validationMessages([
+        'Tên project không được để trống',
+      ])
+    }
+
+    if(nextName !== undefined){
+      project.name = nextName;
+    }
+
+    if( nextDescription !== undefined){
+      project.description = nextDescription ||undefined;
+    }
+    try{
+      const updated = await this.projectRepository.save(project);
+
+      return successResponse({
+        message: 'Cập nhật project thành công',
+        data: {
+          id: updated.id,
+          name: updated.name,
+          projectKey: updated.projectKey,
+          description: updated.description,
+          owner: updated.owner
+            ? {
+                id: updated.owner.id,
+                email: updated.owner.email,
+                username: updated.owner.username,
+                fullName: updated.owner.fullName,
+              }
+            : null,
+          updatedBy: currentUser.id,
+        }
+      })
+    }catch{
+      throw AppErrors.project.projectUpdateFailed();
+    }
+  }
+
+  async deleteProject(projectId: string, currentUser: AuthenticatedUser){
+    const project = await this.projectRepository.findOne({
+      where:{id:projectId},
+    })
+
+    if(!project) throw AppErrors.project.projectNotFound();
+
+    try{
+      await this.projectRepository.remove(project);
+
+      return successResponse({
+        message:'Xoá project thành công',
+        data:{
+          id: project.id,
+          deletedBy: currentUser.id,
+        }
+      });
+    }catch{
+      throw AppErrors.project.projectDeleteFailed();
+    }
   }
 }

@@ -25,10 +25,10 @@ export interface ValidationIssue {
 type HttpExceptionResponseBody =
   | string
   | {
-      message?: string | string[];
-      error?: string;
-      data?: unknown;
-    };
+    message?: string | string[];
+    error?: string;
+    data?: unknown;
+  };
 
 export const APP_ERROR_DEFINITIONS = {
   common: {
@@ -177,7 +177,22 @@ export const APP_ERROR_DEFINITIONS = {
       error: 'PROJECT_CREATION_FAILED',
       message: 'Khong the tao project',
     },
-},
+    projectUpdateFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'PROJECT_UPDATE_FAILED',
+      message: 'Khong the cap nhat project',
+    },
+    projectDeleteFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'PROJECT_DELETE_FAILED',
+      message: 'Khong the xoa project',
+    },
+    projectUpdatePayloadEmpty: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'PROJECT_UPDATE_PAYLOAD_EMPTY',
+      message: 'Khong co du lieu hop le de cap nhat project',
+    },
+  },
 } as const satisfies Record<string, Record<string, AppErrorDefinition>>;
 
 export class AppException extends HttpException {
@@ -247,13 +262,19 @@ export const AppErrors = {
     permissionDenied: () => new AppException(APP_ERROR_DEFINITIONS.project.permissionDenied),
 
     projectKeyAlreadyExists: () =>
-    new AppException(APP_ERROR_DEFINITIONS.project.projectKeyAlreadyExists),
+      new AppException(APP_ERROR_DEFINITIONS.project.projectKeyAlreadyExists),
     projectNotFound: () =>
       new AppException(APP_ERROR_DEFINITIONS.project.projectNotFound),
     adminRoleNotSeeded: () =>
       new AppException(APP_ERROR_DEFINITIONS.project.adminRoleNotSeeded),
     projectCreationFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.project.projectCreationFailed),
+    projectUpdateFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.projectUpdateFailed),
+    projectDeleteFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.projectDeleteFailed),
+    projectUpdatePayloadEmpty: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.projectUpdatePayloadEmpty),
   },
 } as const;
 
