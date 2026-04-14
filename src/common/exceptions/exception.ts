@@ -192,6 +192,46 @@ export const APP_ERROR_DEFINITIONS = {
       error: 'PROJECT_UPDATE_PAYLOAD_EMPTY',
       message: 'Khong co du lieu hop le de cap nhat project',
     },
+    memberAlreadyExists: {
+      statusCode: HttpStatus.CONFLICT,
+      error: 'PROJECT_MEMBER_ALREADY_EXISTS',
+      message: 'Nguoi dung da thuoc project nay',
+    },
+    memberNotFound: {
+      statusCode: HttpStatus.NOT_FOUND,
+      error: 'PROJECT_MEMBER_NOT_FOUND',
+      message: 'Khong tim thay thanh vien trong project',
+    },
+    roleNotFound: {
+      statusCode: HttpStatus.NOT_FOUND,
+      error: 'PROJECT_ROLE_NOT_FOUND',
+      message: 'Role khong ton tai',
+    },
+    ownerRemovalNotAllowed: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'PROJECT_OWNER_REMOVAL_NOT_ALLOWED',
+      message: 'Khong duoc xoa owner khoi project',
+    },
+    ownerRoleChangeNotAllowed: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'PROJECT_OWNER_ROLE_CHANGE_NOT_ALLOWED',
+      message: 'Khong duoc thay doi role cua owner project',
+    },
+    memberCreationFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'PROJECT_MEMBER_CREATION_FAILED',
+      message: 'Khong the them thanh vien vao project',
+    },
+    memberRoleUpdateFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'PROJECT_MEMBER_ROLE_UPDATE_FAILED',
+      message: 'Khong the cap nhat role thanh vien',
+    },
+    memberDeletionFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'PROJECT_MEMBER_DELETION_FAILED',
+      message: 'Khong the xoa thanh vien khoi project',
+    },
   },
 } as const satisfies Record<string, Record<string, AppErrorDefinition>>;
 
@@ -275,6 +315,22 @@ export const AppErrors = {
       new AppException(APP_ERROR_DEFINITIONS.project.projectDeleteFailed),
     projectUpdatePayloadEmpty: () =>
       new AppException(APP_ERROR_DEFINITIONS.project.projectUpdatePayloadEmpty),
+    memberAlreadyExists: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.memberAlreadyExists),
+    memberNotFound: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.memberNotFound),
+    roleNotFound: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.roleNotFound),
+    ownerRemovalNotAllowed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.ownerRemovalNotAllowed),
+    ownerRoleChangeNotAllowed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.ownerRoleChangeNotAllowed),
+    memberCreationFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.memberCreationFailed),
+    memberRoleUpdateFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.memberRoleUpdateFailed),
+    memberDeletionFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.memberDeletionFailed),
   },
 } as const;
 

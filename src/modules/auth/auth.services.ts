@@ -273,7 +273,7 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const normalizedEmail = dto.email.trim().toLowerCase();
-    const normalizedUsername = dto.username.trim();
+    const normalizedUsername = dto.userName.trim();
     const normalizedFullName = dto.fullName.trim();
 
     const existingUsername = await this.usersService.findByUsername(normalizedUsername);

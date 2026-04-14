@@ -41,7 +41,7 @@ export class RegisterDto {
   @Matches(/^[a-zA-Z0-9._]+$/, {
     message: 'Username chi duoc chua chu, so, dau cham va dau gach duoi',
   })
-  username: string;
+  userName: string;
 
   @ApiProperty({
     description: 'Mat khau phai co chu hoa, chu thuong, so va ky tu dac biet.',
