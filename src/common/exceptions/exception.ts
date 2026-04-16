@@ -416,6 +416,26 @@ export const APP_ERROR_DEFINITIONS = {
       error: 'AI_INVALID_RECOMMENDATION',
       message: 'Ket qua goi y cua AI khong hop le',
     },
+    recommendationNotFound: {
+      statusCode: HttpStatus.NOT_FOUND,
+      error: 'AI_RECOMMENDATION_NOT_FOUND',
+      message: 'Khong tim thay goi y AI cho task nay',
+    },
+    recommendationUserInvalid: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'AI_RECOMMENDATION_USER_INVALID',
+      message: 'Nguoi duoc AI goi y khong hop le hoac khong con thuoc project',
+    },
+    recommendationLoadFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'AI_RECOMMENDATION_LOAD_FAILED',
+      message: 'Khong the tai du lieu goi y AI',
+    },
+    aiAssignFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'AI_ASSIGN_FAILED',
+      message: 'Khong the ap dung goi y AI vao task',
+    },
   },
 } as const satisfies Record<string, Record<string, AppErrorDefinition>>;
 
@@ -579,6 +599,14 @@ export const AppErrors = {
       new AppException(APP_ERROR_DEFINITIONS.aiAssignment.aiServiceCallFailed),
     invalidRecommendation: () =>
       new AppException(APP_ERROR_DEFINITIONS.aiAssignment.invalidRecommendation),
+    recommendationNotFound: () =>
+      new AppException(APP_ERROR_DEFINITIONS.aiAssignment.recommendationNotFound),
+    recommendationUserInvalid: () =>
+      new AppException(APP_ERROR_DEFINITIONS.aiAssignment.recommendationUserInvalid),
+    recommendationLoadFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.aiAssignment.recommendationLoadFailed),
+    aiAssignFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.aiAssignment.aiAssignFailed),
   },
   
 } as const;

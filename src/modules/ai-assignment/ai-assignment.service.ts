@@ -9,7 +9,7 @@ import { successResponse } from '../../common/response';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { In, Repository } from 'typeorm';
-
+import { TaskHistoriesService } from '../tasks/task-histories.service';
 import { AiAssignmentLog } from './entities/ai-assignment-log.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/entities/project.entity';
@@ -41,6 +41,7 @@ export class AiAssignmentService {
     private readonly projectMemberRepository: Repository<ProjectMember>,
 
     private readonly httpService: HttpService,
+    private readonly taskHistoriesService: TaskHistoriesService,
   ) {}
 
   async createUserSkill(userId: string, dto: CreateUserSkillDto){
@@ -371,6 +372,203 @@ export class AiAssignmentService {
         throw error;
       }
       throw AppErrors.aiAssignment.aiServiceCallFailed();
+    }
+  }
+
+
+  async getLatesRecommendation(projectId: string, taskId: string){
+    const task = await this.taskRepository.findOne({
+      where: { id : taskId, project: { id : projectId },},
+    })
+    if(!task) throw AppErrors.task.taskNotFound();
+
+    try{
+      const latestLog = await this.aiAssignmentLogRepository.findOne({
+        where: {
+          task : { id: taskId},
+        },
+        relations: {
+          task: true,
+          recommendedUser: true,
+        },
+        order: {
+          createdAt: 'DESC'
+        }
+      });
+      if(!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
+
+      return successResponse({
+        message: 'lay goi y AI moi nhat thanh cong',
+        data:{
+          id: latestLog.id,
+          task: {
+            id: task.id,
+            taskCode: task.taskCode,
+            title: task.title,
+          },
+          recommendedUser: {
+            id: latestLog.recommendedUser.id,
+            email: latestLog.recommendedUser.email,
+            username: latestLog.recommendedUser.username,
+            fullName: latestLog.recommendedUser.fullName,
+          },
+          finalScore: Number(latestLog.finalScore),
+          reasonText: latestLog.reasonText,
+          scoreBreakdownJson: latestLog.scoreBreakdownJson,
+          createdAt: latestLog.createdAt,
+        }
+      })
+    }catch(error){
+      if(error instanceof AppException){
+         throw error;
+      }
+      throw AppErrors.aiAssignment.recommendationLoadFailed();
+    }
+  }
+
+  async getRecommendationLogs(projectId: string, taskId: string){
+    const task = await this.taskRepository.findOne({
+      where: {
+        id : taskId,
+        project: { id: projectId },
+      }
+    })
+    if(!task) throw AppErrors.task.taskNotFound();
+
+    try{
+      const logs = await this.aiAssignmentLogRepository.find({
+        where: {
+          task: { id: taskId },
+        },
+        relations: {
+          task : true,
+          recommendedUser: true,
+        },
+        order: { createdAt: 'DESC' },
+      });
+
+      return successResponse({
+        message: 'Lay lich su goi y Ai thanh cong',
+        data: logs.map((log) => ({
+          id: log.id,
+          recommendedUser: {
+            id: log.recommendedUser.id,
+            email: log.recommendedUser.email,
+            username: log.recommendedUser.username,
+            fullName: log.recommendedUser.fullName,
+          },
+          finalScore: Number(log.finalScore),
+          reasonText: log.reasonText,
+          scoreBreakdownJson: log.scoreBreakdownJson,
+          createdAt: log.createdAt,
+        })),
+      })
+    }catch{
+      throw AppErrors.aiAssignment.recommendationLoadFailed();
+    }
+  }
+
+  async applyLatestRecommendation(projectId: string, taskId: string, currentUser: AuthenticatedUser){
+    const task = await this.taskRepository.findOne({
+      where: {
+        id: taskId,
+        project: { id: projectId },
+      },
+      relations: {
+        project: true,
+        assignee: true,
+        taskType: true,
+        status: true,
+        priority: true,
+        reporter: true,
+        parentTask: true,
+      }
+    });
+
+    if(!task) throw AppErrors.task.taskNotFound();
+
+    const latestLog = await this.aiAssignmentLogRepository.findOne({
+      where: {
+        task: { id: taskId },
+      },
+      relations: {
+        recommendedUser: true,
+        task : true,
+      },
+      order:{
+        createdAt: 'DESC',
+      }
+    });
+    if(!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
+
+    const recommendedUser = latestLog.recommendedUser;
+    const membership = await this.projectMemberRepository.findOne({
+      where:{
+        project: { id: projectId },
+        user : { id: recommendedUser.id },
+      },
+      relations : {
+        user: true,
+
+      }
+    })
+    if(!membership || !membership.user.isActive) throw AppErrors.aiAssignment.recommendationUserInvalid();
+
+    const updatedByUser = await this.userRepository.findOne({
+      where: { id : currentUser.id },
+    });
+    if(!updatedByUser) throw AppErrors.auth.userNotFound();
+    if(!updatedByUser.isActive) throw AppErrors.auth.accountDisabled();
+
+    const oldAssigneeName = task.assignee?.fullName || null;
+    if(task.assignee?.id === recommendedUser.id){
+      return successResponse({
+        message: 'Task da duoc gan dung nguoi duoc AI goi y',
+        data: {
+          taskId: task.id,
+          assignee: {
+            id: recommendedUser.id,
+            email: recommendedUser.email,
+            username: recommendedUser.username,
+            fullName: recommendedUser.fullName,
+          },
+          aiLogId: latestLog.id,
+        },
+      })
+    } 
+    task.assignee = recommendedUser;
+
+    try{
+      const updatedTask = await this.taskRepository.save(task);
+
+      await this.taskHistoriesService.createHistory(
+        updatedTask,
+        updatedByUser,
+        'assignee',
+        oldAssigneeName,
+        recommendedUser.fullName,
+      );
+
+      return successResponse({
+        message: 'Ap dung goi y AI thanh cong',
+        data: {
+          aiLogId: latestLog.id,
+          task: {
+            id: updatedTask.id,
+            taskCode: updatedTask.taskCode,
+            title: updatedTask.title,
+          },
+          assignee: {
+            id: recommendedUser.id,
+            email: recommendedUser.email,
+            username: recommendedUser.username,
+            fullName: recommendedUser.fullName,
+          },
+          appliedBy: currentUser.id,
+        }
+      })
+    }catch{
+      throw AppErrors.aiAssignment.aiAssignFailed();
     }
   }
 }
