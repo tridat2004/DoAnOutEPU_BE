@@ -464,6 +464,13 @@ export const APP_ERROR_DEFINITIONS = {
       message: 'Khong the xoa thong bao',
     },
   },
+  dashboard: {
+    dashboardLoadFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'DASHBOARD_LOAD_FAILED',
+      message: 'Khong the tai du lieu dashboard',
+    },
+  },
 } as const satisfies Record<string, Record<string, AppErrorDefinition>>;
 
 export class AppException extends HttpException {
@@ -647,7 +654,10 @@ export const AppErrors = {
     notificationDeleteFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.notification.notificationDeleteFailed),
   },
-  
+  dashboard: {
+    dashboardLoadFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.dashboard.dashboardLoadFailed),
+  },
 } as const;
 
 export function buildErrorResponse(statusCode: number, body: AppErrorBody): AppErrorResponse {
