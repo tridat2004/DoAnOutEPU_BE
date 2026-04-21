@@ -234,6 +234,11 @@ export const APP_ERROR_DEFINITIONS = {
     },
   },
   task: {
+    taskListLoadFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'TASK_LIST_LOAD_FAILED',
+      message: 'Khong the tai danh sach task',
+    },
     taskNotFound: {
       statusCode: HttpStatus.NOT_FOUND,
       error: 'TASK_NOT_FOUND',
@@ -611,6 +616,8 @@ export const AppErrors = {
       new AppException(APP_ERROR_DEFINITIONS.task.taskStatusCreationFailed),
     priorityCreationFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.task.priorityCreationFailed),
+    taskListLoadFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.task.taskListLoadFailed),
   },
   aiAssignment: {
     skillNotFound: () =>

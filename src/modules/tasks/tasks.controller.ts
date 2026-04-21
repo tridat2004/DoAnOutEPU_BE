@@ -14,10 +14,11 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireProjectPermissions } from '../auth/decorators/project-permissions.decorator';
-
+import { Query } from '@nestjs/common';
+import { ListProjectTasksDto } from './dto/list-project-tasks.dto';
 @Controller('projects/:projectId/tasks')
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(private readonly tasksService: TasksService) { }
 
   @RequireProjectPermissions('task.create')
   @Post()
@@ -33,9 +34,10 @@ export class TasksController {
   @Get()
   getTasks(
     @Param('projectId') projectId: string,
+    @Query() query: ListProjectTasksDto,
     @CurrentUser() currentUser: AuthenticatedUser,
   ) {
-    return this.tasksService.getTasks(projectId, currentUser);
+    return this.tasksService.getTasks(projectId, query, currentUser);
   }
 
   @RequireProjectPermissions('task.view')

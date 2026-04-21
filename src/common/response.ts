@@ -1,20 +1,37 @@
 export function successResponse<T>({
   message,
   data,
-  meta,
 }: {
   message: string;
   data: T;
-  meta?: Record<string, any>;
 }) {
-  const response: Record<string, any> = {
+  return {
     status_code: 200,
     message,
     error: null,
     data,
   };
+}
 
-  if (meta) response['meta'] = meta;
-
-  return response;
+export function successPaginationResponse<T>({
+  message,
+  data,
+  meta,
+}: {
+  message: string;
+  data: T[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}) {
+  return {
+    status_code: 200,
+    message,
+    error: null,
+    data,
+    meta,
+  };
 }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository , Brackets} from 'typeorm';
 import { CreateTaskTypeDto } from './dto/create-task-type.dto';
 import { CreateTaskStatusDto } from './dto/create-task-status.dto';
 import { CreatePriorityDto } from './dto/create-priority.dto';
@@ -16,8 +16,8 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AppErrors, AppException } from '../../common/exceptions/exception';
-import { successResponse } from '../../common/response';
-
+import { successPaginationResponse, successResponse } from '../../common/response';
+import { ListProjectTasksDto } from './dto/list-project-tasks.dto';
 @Injectable()
 export class TasksService {
   constructor(
@@ -142,26 +142,150 @@ export class TasksService {
       throw AppErrors.task.taskCreationFailed();
     }
   }
-  async getTasks(projectId: string, currentUser: AuthenticatedUser) {
+  async getTasks(
+    projectId: string,
+    query: ListProjectTasksDto,
+    _currentUser: AuthenticatedUser,
+  ) {
     const project = await this.projectRepository.findOne({
       where: { id: projectId },
-    })
-    if (!project) throw AppErrors.project.projectNotFound();
+    });
 
-    const tasks = await this.taskRepository.find({
-      where: {
-        project: { id: projectId },
-      },
-      relations: this.taskRelations(),
-      order: { createdAt: 'DESC' }
-    })
+    if (!project) {
+      throw AppErrors.project.projectNotFound();
+    }
 
-    return successResponse({
-      message: 'Lay danh sach task thanh cong',
-      data: tasks,
-    })
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    try {
+      const qb = this.taskRepository
+        .createQueryBuilder('task')
+        .leftJoinAndSelect('task.project', 'project')
+        .leftJoinAndSelect('task.taskType', 'taskType')
+        .leftJoinAndSelect('task.status', 'status')
+        .leftJoinAndSelect('task.priority', 'priority')
+        .leftJoinAndSelect('task.reporter', 'reporter')
+        .leftJoinAndSelect('task.assignee', 'assignee')
+        .leftJoinAndSelect('task.parentTask', 'parentTask')
+        .where('project.id = :projectId', { projectId });
+
+      if (query.statusId) {
+        qb.andWhere('status.id = :statusId', {
+          statusId: query.statusId,
+        });
+      }
+
+      if (query.priorityId) {
+        qb.andWhere('priority.id = :priorityId', {
+          priorityId: query.priorityId,
+        });
+      }
+
+      if (query.assigneeUserId) {
+        qb.andWhere('assignee.id = :assigneeUserId', {
+          assigneeUserId: query.assigneeUserId,
+        });
+      }
+
+      if (query.keyword?.trim()) {
+        const keyword = `%${query.keyword.trim()}%`;
+
+        qb.andWhere(
+          new Brackets((subQb) => {
+            subQb
+              .where('task.title ILIKE :keyword', { keyword })
+              .orWhere('task.description ILIKE :keyword', { keyword })
+              .orWhere('task.taskCode ILIKE :keyword', { keyword });
+          }),
+        );
+      }
+
+      qb.orderBy('task.createdAt', 'DESC')
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      const [items, total] = await qb.getManyAndCount();
+      const data = items.map((task) => this.serializeTaskListItem(task));
+
+      const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+      return successPaginationResponse({
+        message: 'Lay danh sach task thanh cong',
+        data,
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages
+        },
+      });
+    } catch {
+      throw AppErrors.task.taskListLoadFailed();
+    }
   }
-
+  private serializeTaskListItem(task: Task) {
+    return {
+      id: task.id,
+      taskCode: task.taskCode,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      estimatedHours: task.estimatedHours,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      taskType: task.taskType
+        ? {
+            id: task.taskType.id,
+            code: task.taskType.code,
+            name: task.taskType.name,
+          }
+        : null,
+      status: task.status
+        ? {
+            id: task.status.id,
+            code: task.status.code,
+            name: task.status.name,
+            color: task.status.color,
+            position: task.status.position,
+          }
+        : null,
+      priority: task.priority
+        ? {
+            id: task.priority.id,
+            code: task.priority.code,
+            name: task.priority.name,
+            weight: task.priority.weight,
+          }
+        : null,
+      reporter: task.reporter
+        ? {
+            id: task.reporter.id,
+            email: task.reporter.email,
+            username: task.reporter.username,
+            fullName: task.reporter.fullName,
+            avatarUrl: task.reporter.avatarUrl,
+            isActive: task.reporter.isActive,
+          }
+        : null,
+      assignee: task.assignee
+        ? {
+            id: task.assignee.id,
+            email: task.assignee.email,
+            username: task.assignee.username,
+            fullName: task.assignee.fullName,
+            avatarUrl: task.assignee.avatarUrl,
+            isActive: task.assignee.isActive,
+          }
+        : null,
+      parentTask: task.parentTask
+        ? {
+            id: task.parentTask.id,
+            taskCode: task.parentTask.taskCode,
+            title: task.parentTask.title,
+          }
+        : null,
+    };
+  }
   async getTaskDetails(projectId: string, taskId: string, currentUser: AuthenticatedUser) {
     const task = await this.taskRepository.findOne({
       where: { id: taskId, project: { id: projectId } },
