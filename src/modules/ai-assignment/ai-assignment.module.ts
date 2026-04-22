@@ -14,12 +14,18 @@ import { Project } from '../projects/entities/project.entity';
 import { ProjectMember } from '../projects/entities/project-member.entity';
 import { TasksModule } from '../tasks/tasks.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AiProjectSummaryController } from './ai-project-summary.controller';
+import { TaskType } from '../tasks/entities/task-type.entity';
+import { Priority } from '../tasks/entities/priority.entity';
+import { TaskStatus } from '../tasks/entities/task-status.entity';
+import { DashboardModule } from '../dashboard/dashboard.module';
 
 @Module({
   imports: [
     HttpModule,
     TasksModule,
     NotificationsModule,
+    DashboardModule,
     TypeOrmModule.forFeature([
       UserSkill,
       AiAssignmentLog,
@@ -27,9 +33,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
       Task,
       Project,
       ProjectMember,
+      TaskType,
+      Priority,
+      TaskStatus,
     ]),
   ],
-  controllers: [AiAssignmentController, AiRecommendationController],
+  controllers: [AiAssignmentController, AiRecommendationController, AiProjectSummaryController],
   providers: [AiAssignmentService],
   exports: [AiAssignmentService, TypeOrmModule],
 })

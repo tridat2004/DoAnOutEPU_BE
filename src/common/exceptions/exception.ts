@@ -441,6 +441,16 @@ export const APP_ERROR_DEFINITIONS = {
       error: 'AI_ASSIGN_FAILED',
       message: 'Khong the ap dung goi y AI vao task',
     },
+    projectSummaryFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'AI_PROJECT_SUMMARY_FAILED',
+      message: 'Khong the tao project summary bang AI',
+    },
+    projectSummaryInvalid: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'AI_PROJECT_SUMMARY_INVALID',
+      message: 'Ket qua project summary AI khong hop le',
+    },
   },
   notification: {
     notificationNotFound: {
@@ -648,6 +658,10 @@ export const AppErrors = {
       new AppException(APP_ERROR_DEFINITIONS.aiAssignment.recommendationLoadFailed),
     aiAssignFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.aiAssignment.aiAssignFailed),
+    projectSummaryFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.aiAssignment.projectSummaryFailed),
+    projectSummaryInvalid: () =>
+      new AppException(APP_ERROR_DEFINITIONS.aiAssignment.projectSummaryInvalid),
   },
   notification: {
     notificationNotFound: () =>

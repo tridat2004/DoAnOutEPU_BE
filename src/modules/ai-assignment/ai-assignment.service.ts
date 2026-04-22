@@ -20,6 +20,11 @@ import {
 } from './types/recommendation.types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DashboardService } from '../dashboard/dashboard.service';
+import {
+  AiProjectSummaryPayload,
+  AiProjectSummaryResponse,
+} from './types/project-summary.types';
 @Injectable()
 export class AiAssignmentService {
   constructor(
@@ -44,27 +49,28 @@ export class AiAssignmentService {
     private readonly httpService: HttpService,
     private readonly taskHistoriesService: TaskHistoriesService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+    private readonly dashboardService: DashboardService,
+  ) { }
 
-  async createUserSkill(userId: string, dto: CreateUserSkillDto){
+  async createUserSkill(userId: string, dto: CreateUserSkillDto) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
     })
-    if(!user) throw AppErrors.auth.userNotFound();
+    if (!user) throw AppErrors.auth.userNotFound();
 
     const normalizedSkillName = dto.skillName.trim().toLowerCase();
 
     const existingSkill = await this.userSkillRepository.findOne({
       where: {
-        user : { id: userId },
+        user: { id: userId },
         skillName: normalizedSkillName,
       },
       relations: {
         user: true,
       }
     })
-    if(existingSkill) throw AppErrors.aiAssignment.skillAlreadyExists();
-    try{
+    if (existingSkill) throw AppErrors.aiAssignment.skillAlreadyExists();
+    try {
       const skill = this.userSkillRepository.create({
         user,
         skillName: normalizedSkillName,
@@ -81,8 +87,8 @@ export class AiAssignmentService {
           levelScore: savedSkill.levelScore,
         }
       });
-    }catch(error){
-      if(error instanceof AppException){
+    } catch (error) {
+      if (error instanceof AppException) {
         throw error;
       }
       throw AppErrors.aiAssignment.skillCreationFailed();
@@ -119,29 +125,29 @@ export class AiAssignmentService {
     });
   }
 
-  async updateUserSkill(userId: string, skillId: string, dto: UpdateUserSkillDto){
+  async updateUserSkill(userId: string, skillId: string, dto: UpdateUserSkillDto) {
     const skill = await this.userSkillRepository.findOne({
-      where : {
+      where: {
         id: skillId,
-        user: { id : userId },
+        user: { id: userId },
       },
       relations: {
         user: true,
       }
     });
-    if(!skill) throw AppErrors.aiAssignment.skillNotFound();
-    if(dto.skillName === undefined && dto.levelScore === undefined){
+    if (!skill) throw AppErrors.aiAssignment.skillNotFound();
+    if (dto.skillName === undefined && dto.levelScore === undefined) {
       throw AppErrors.common.validationMessages(['Khong co du lieu hop le de cap nhat skill']);
     }
 
-    if(dto.skillName !== undefined){
+    if (dto.skillName !== undefined) {
       const normalizedSkillName = dto.skillName.trim().toLowerCase();
 
-      if(!normalizedSkillName) {
+      if (!normalizedSkillName) {
         throw AppErrors.common.validationMessages(['Skill name khong duoc de trong']);
       }
       const duplicateSkill = await this.userSkillRepository.findOne({
-        where:{
+        where: {
           user: { id: userId },
           skillName: normalizedSkillName,
         },
@@ -149,14 +155,14 @@ export class AiAssignmentService {
           user: true,
         }
       });
-      if(duplicateSkill && duplicateSkill.id !== skill.id){
+      if (duplicateSkill && duplicateSkill.id !== skill.id) {
         throw AppErrors.aiAssignment.skillAlreadyExists();
       }
 
       skill.skillName = normalizedSkillName;
     }
 
-    if (dto.levelScore !== undefined){
+    if (dto.levelScore !== undefined) {
       skill.levelScore = dto.levelScore;
     }
 
@@ -166,28 +172,28 @@ export class AiAssignmentService {
       return successResponse({
         message: 'Cap nhat skill thanh cong',
         data: {
-          id:updatedSkill.id,
+          id: updatedSkill.id,
           userId,
           skillName: updatedSkill.skillName,
           levelScore: updatedSkill.levelScore,
         }
       })
-    }catch{
+    } catch {
       throw AppErrors.aiAssignment.skillUpdateFailed();
     }
   }
 
-  async deleteUserSkill(userId: string, skillId: string){
+  async deleteUserSkill(userId: string, skillId: string) {
     const skill = await this.userSkillRepository.findOne({
       where: {
         id: skillId,
-        user : { id: userId },
+        user: { id: userId },
       },
-      relations : {
+      relations: {
         user: true
       }
     });
-    if(!skill) throw AppErrors.aiAssignment.skillNotFound();
+    if (!skill) throw AppErrors.aiAssignment.skillNotFound();
     try {
       await this.userSkillRepository.remove(skill);
 
@@ -203,18 +209,18 @@ export class AiAssignmentService {
     }
   }
 
-  async recommendAssignee(projectId: string, taskId: string, currentUser: AuthenticatedUser){
+  async recommendAssignee(projectId: string, taskId: string, currentUser: AuthenticatedUser) {
     const project = await this.projectRepository.findOne({
       where: { id: projectId },
     });
-    if(!project) throw AppErrors.project.projectNotFound();
+    if (!project) throw AppErrors.project.projectNotFound();
 
     const task = await this.taskRepository.findOne({
       where: {
-        id : taskId,
-        project: {id: projectId},
+        id: taskId,
+        project: { id: projectId },
       },
-      relations :{
+      relations: {
         project: true,
         taskType: true,
         priority: true,
@@ -222,18 +228,18 @@ export class AiAssignmentService {
         assignee: true,
       }
     });
-    if(!task) throw AppErrors.task.taskNotFound();
+    if (!task) throw AppErrors.task.taskNotFound();
 
     const members = await this.projectMemberRepository.find({
       where: {
         project: { id: projectId },
       },
       relations: {
-        user: true, 
+        user: true,
         role: true,
       }
     })
-    if(!members.length) throw AppErrors.aiAssignment.noCandidates();
+    if (!members.length) throw AppErrors.aiAssignment.noCandidates();
     const userIds = members.map((member) => member.user.id);
 
     const skills = await this.userSkillRepository.find({
@@ -247,62 +253,62 @@ export class AiAssignmentService {
     const workloadRows = await this.taskRepository
       .createQueryBuilder('task')
       .select('task.assignee_user_id', 'userId')
-      .addSelect('COUNT(task.id)', 'openCount' )
+      .addSelect('COUNT(task.id)', 'openCount')
       .leftJoin('task.status', 'status')
       .where('task.project_id = :projectId', { projectId })
       .andWhere('task.assignee_user_id IS NOT NULL')
-      .andWhere('status.code != :done', { done : 'done'})
+      .andWhere('status.code != :done', { done: 'done' })
       .groupBy('task.assignee_user_id')
       .getRawMany<{ userId: string; openCount: number }>();
-    
-      const workloadMap = new Map<string, number>(
-        workloadRows.map((row) => [row.userId, Number(row.openCount)]),
-      );
 
-      const payload  = this.buildRecommendationPayload(task, members, skills, workloadMap);
-      const aiResult = await this.callAiRecommendService(payload);
+    const workloadMap = new Map<string, number>(
+      workloadRows.map((row) => [row.userId, Number(row.openCount)]),
+    );
 
-      const recommendedMember = members.find(
-        (members) => members.user.id === aiResult.recommendedUserId,
-      )
-      if(!recommendedMember) throw AppErrors.aiAssignment.invalidRecommendation();
-      try{
-        const log = this.aiAssignmentLogRepository.create({
-          task,
-          recommendedUser: recommendedMember.user,
-          finalScore: String(aiResult.finalScore),
-          reasonText: aiResult.reasonText || null,
-          scoreBreakdownJson: aiResult.scoreBreakdownJson || null,
-        });
+    const payload = this.buildRecommendationPayload(task, members, skills, workloadMap);
+    const aiResult = await this.callAiRecommendService(payload);
 
-        const savedLog = await this.aiAssignmentLogRepository.save(log);
-        return successResponse({
-          message: 'AI goi y nguoi phu hop thanh cong',
-          data: {
-            logId: savedLog.id,
-            task: {
-              id: task.id,
-              taskCode: task.taskCode,
-              title: task.title,
-            },
-            recommendedUser: {
-              id: recommendedMember.user.id,
-              email: recommendedMember.user.email,
-              username: recommendedMember.user.username,
-              fullName: recommendedMember.user.fullName,
-              role: recommendedMember.role.code,
-            },
-            finalScore: aiResult.finalScore,
-            reasonText: aiResult.reasonText,
-            scoreBreakdownJson: aiResult.scoreBreakdownJson,
-            topCandidates: aiResult.topCandidates || [],
-            requestedBy: currentUser.id,
+    const recommendedMember = members.find(
+      (members) => members.user.id === aiResult.recommendedUserId,
+    )
+    if (!recommendedMember) throw AppErrors.aiAssignment.invalidRecommendation();
+    try {
+      const log = this.aiAssignmentLogRepository.create({
+        task,
+        recommendedUser: recommendedMember.user,
+        finalScore: String(aiResult.finalScore),
+        reasonText: aiResult.reasonText || null,
+        scoreBreakdownJson: aiResult.scoreBreakdownJson || null,
+      });
+
+      const savedLog = await this.aiAssignmentLogRepository.save(log);
+      return successResponse({
+        message: 'AI goi y nguoi phu hop thanh cong',
+        data: {
+          logId: savedLog.id,
+          task: {
+            id: task.id,
+            taskCode: task.taskCode,
+            title: task.title,
           },
-        });
-      }catch (error) {
-        console.error('AI LOG SAVE ERROR:', error);
-        throw AppErrors.aiAssignment.recommendationLogFailed();
-      }
+          recommendedUser: {
+            id: recommendedMember.user.id,
+            email: recommendedMember.user.email,
+            username: recommendedMember.user.username,
+            fullName: recommendedMember.user.fullName,
+            role: recommendedMember.role.code,
+          },
+          finalScore: aiResult.finalScore,
+          reasonText: aiResult.reasonText,
+          scoreBreakdownJson: aiResult.scoreBreakdownJson,
+          topCandidates: aiResult.topCandidates || [],
+          requestedBy: currentUser.id,
+        },
+      });
+    } catch (error) {
+      console.error('AI LOG SAVE ERROR:', error);
+      throw AppErrors.aiAssignment.recommendationLogFailed();
+    }
 
   }
   private buildRecommendationPayload(
@@ -351,26 +357,26 @@ export class AiAssignmentService {
       })),
     };
   }
-  
-  private async callAiRecommendService(payload : AiRecommendPayload): Promise<AiRecommendResponse>{
+
+  private async callAiRecommendService(payload: AiRecommendPayload): Promise<AiRecommendResponse> {
     const baseUrl = process.env.AI_AGENT_BASE_URL;
 
-    if(!baseUrl){
+    if (!baseUrl) {
       throw AppErrors.aiAssignment.aiServiceCallFailed();
     }
 
-    try{
+    try {
       const response = await firstValueFrom(
         this.httpService.post(`${baseUrl}/api/v1/recommend`, payload, { timeout: 15000 }),
       );
 
       const data = response.data;
 
-      if(!data?.recommendedUserId )  throw AppErrors.aiAssignment.invalidRecommendation();
+      if (!data?.recommendedUserId) throw AppErrors.aiAssignment.invalidRecommendation();
 
       return data;
-    }catch(error){
-      if(error instanceof AppException){
+    } catch (error) {
+      if (error instanceof AppException) {
         throw error;
       }
       throw AppErrors.aiAssignment.aiServiceCallFailed();
@@ -378,16 +384,16 @@ export class AiAssignmentService {
   }
 
 
-  async getLatesRecommendation(projectId: string, taskId: string){
+  async getLatesRecommendation(projectId: string, taskId: string) {
     const task = await this.taskRepository.findOne({
-      where: { id : taskId, project: { id : projectId },},
+      where: { id: taskId, project: { id: projectId }, },
     })
-    if(!task) throw AppErrors.task.taskNotFound();
+    if (!task) throw AppErrors.task.taskNotFound();
 
-    try{
+    try {
       const latestLog = await this.aiAssignmentLogRepository.findOne({
         where: {
-          task : { id: taskId},
+          task: { id: taskId },
         },
         relations: {
           task: true,
@@ -397,11 +403,11 @@ export class AiAssignmentService {
           createdAt: 'DESC'
         }
       });
-      if(!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
+      if (!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
 
       return successResponse({
         message: 'lay goi y AI moi nhat thanh cong',
-        data:{
+        data: {
           id: latestLog.id,
           task: {
             id: task.id,
@@ -420,30 +426,30 @@ export class AiAssignmentService {
           createdAt: latestLog.createdAt,
         }
       })
-    }catch(error){
-      if(error instanceof AppException){
-         throw error;
+    } catch (error) {
+      if (error instanceof AppException) {
+        throw error;
       }
       throw AppErrors.aiAssignment.recommendationLoadFailed();
     }
   }
 
-  async getRecommendationLogs(projectId: string, taskId: string){
+  async getRecommendationLogs(projectId: string, taskId: string) {
     const task = await this.taskRepository.findOne({
       where: {
-        id : taskId,
+        id: taskId,
         project: { id: projectId },
       }
     })
-    if(!task) throw AppErrors.task.taskNotFound();
+    if (!task) throw AppErrors.task.taskNotFound();
 
-    try{
+    try {
       const logs = await this.aiAssignmentLogRepository.find({
         where: {
           task: { id: taskId },
         },
         relations: {
-          task : true,
+          task: true,
           recommendedUser: true,
         },
         order: { createdAt: 'DESC' },
@@ -465,12 +471,12 @@ export class AiAssignmentService {
           createdAt: log.createdAt,
         })),
       })
-    }catch{
+    } catch {
       throw AppErrors.aiAssignment.recommendationLoadFailed();
     }
   }
 
-  async applyLatestRecommendation(projectId: string, taskId: string, currentUser: AuthenticatedUser){
+  async applyLatestRecommendation(projectId: string, taskId: string, currentUser: AuthenticatedUser) {
     const task = await this.taskRepository.findOne({
       where: {
         id: taskId,
@@ -487,7 +493,7 @@ export class AiAssignmentService {
       }
     });
 
-    if(!task) throw AppErrors.task.taskNotFound();
+    if (!task) throw AppErrors.task.taskNotFound();
 
     const latestLog = await this.aiAssignmentLogRepository.findOne({
       where: {
@@ -495,35 +501,35 @@ export class AiAssignmentService {
       },
       relations: {
         recommendedUser: true,
-        task : true,
+        task: true,
       },
-      order:{
+      order: {
         createdAt: 'DESC',
       }
     });
-    if(!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
+    if (!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
 
     const recommendedUser = latestLog.recommendedUser;
     const membership = await this.projectMemberRepository.findOne({
-      where:{
+      where: {
         project: { id: projectId },
-        user : { id: recommendedUser.id },
+        user: { id: recommendedUser.id },
       },
-      relations : {
+      relations: {
         user: true,
 
       }
     })
-    if(!membership || !membership.user.isActive) throw AppErrors.aiAssignment.recommendationUserInvalid();
+    if (!membership || !membership.user.isActive) throw AppErrors.aiAssignment.recommendationUserInvalid();
 
     const updatedByUser = await this.userRepository.findOne({
-      where: { id : currentUser.id },
+      where: { id: currentUser.id },
     });
-    if(!updatedByUser) throw AppErrors.auth.userNotFound();
-    if(!updatedByUser.isActive) throw AppErrors.auth.accountDisabled();
+    if (!updatedByUser) throw AppErrors.auth.userNotFound();
+    if (!updatedByUser.isActive) throw AppErrors.auth.accountDisabled();
 
     const oldAssigneeName = task.assignee?.fullName || null;
-    if(task.assignee?.id === recommendedUser.id){
+    if (task.assignee?.id === recommendedUser.id) {
       return successResponse({
         message: 'Task da duoc gan dung nguoi duoc AI goi y',
         data: {
@@ -537,10 +543,10 @@ export class AiAssignmentService {
           aiLogId: latestLog.id,
         },
       })
-    } 
+    }
     task.assignee = recommendedUser;
 
-    try{
+    try {
       const updatedTask = await this.taskRepository.save(task);
 
       await this.taskHistoriesService.createHistory(
@@ -579,8 +585,127 @@ export class AiAssignmentService {
           appliedBy: currentUser.id,
         }
       })
-    }catch{
+    } catch {
       throw AppErrors.aiAssignment.aiAssignFailed();
+    }
+  }
+
+  async getProjectSummary(projectId: string) {
+    const dashboardResponse = await this.dashboardService.getProjectDashboard(
+      projectId,
+      {
+        id: 'System',
+        email: '',
+        username: '',
+        fullName: '',
+        isActive: true,
+      }
+    )
+    const dashboardData = dashboardResponse.data;
+    const payload = this.buildProjectSummaryPayload(dashboardData);
+    const result = await this.callAiProjectSummaryService(payload)
+
+    if (
+      !result?.overallSummary ||
+      !result?.projectHealth ||
+      !Array.isArray(result?.topRisks) ||
+      !Array.isArray(result?.recommendedActions)
+    ) {
+      throw AppErrors.aiAssignment.projectSummaryInvalid();
+    }
+
+    return successResponse({
+      message: 'AI tao project summary thanh cong',
+      data: result,
+    })
+
+  }
+  private buildProjectSummaryPayload(
+    dashboardData: any,
+  ): AiProjectSummaryPayload {
+    return {
+      project: {
+        id: dashboardData.project.id,
+        name: dashboardData.project.name,
+        projectKey: dashboardData.project.projectKey,
+        description: dashboardData.project.description || null,
+      },
+      taskSummary: {
+        totalTasks: dashboardData.taskSummary.totalTasks,
+        byStatus: dashboardData.taskSummary.byStatus.map((item: any) => ({
+          code: item.code,
+          name: item.name,
+          count: item.count,
+        })),
+      },
+      prioritySummary: dashboardData.prioritySummary.map((item: any) => ({
+        code: item.code,
+        name: item.name,
+        count: item.count,
+      })),
+      workloadSummary: dashboardData.workloadSummary.map((item: any) => ({
+        fullName: item.user.fullName,
+        role: item.role.code,
+        totalAssignedTasks: item.workload.totalAssignedTasks,
+        openTasks: item.workload.openTasks,
+        doneTasks: item.workload.doneTasks,
+      })),
+      dueSummary: {
+        overdueTasks: dashboardData.dueSummary.overdueTasks,
+        dueToday: dashboardData.dueSummary.dueToday,
+        dueThisWeek: dashboardData.dueSummary.dueThisWeek,
+      },
+      aiUsageSummary: {
+        totalRecommendations: dashboardData.aiUsageSummary.totalRecommendations,
+        latestRecommendation: dashboardData.aiUsageSummary.latestRecommendation
+          ? {
+            taskCode: dashboardData.aiUsageSummary.latestRecommendation.taskCode,
+            recommendedUserFullName:
+              dashboardData.aiUsageSummary.latestRecommendation.recommendedUser
+                .fullName,
+            finalScore:
+              dashboardData.aiUsageSummary.latestRecommendation.finalScore,
+            reasonText:
+              dashboardData.aiUsageSummary.latestRecommendation.reasonText,
+            createdAt:
+              dashboardData.aiUsageSummary.latestRecommendation.createdAt,
+          }
+          : null,
+      },
+      recentActivities: dashboardData.recentActivities.map((item: any) => ({
+        fieldName: item.fieldName,
+        oldValue: item.oldValue,
+        newValue: item.newValue,
+        taskCode: item.task.taskCode,
+        taskTitle: item.task.title,
+        changedByFullName: item.changedBy.fullName,
+        createdAt: item.createdAt,
+      })),
+    };
+  }
+  private async callAiProjectSummaryService(
+    payload: AiProjectSummaryPayload,
+  ): Promise<AiProjectSummaryResponse> {
+    const baseUrl = process.env.AI_AGENT_BASE_URL;
+
+    if (!baseUrl) {
+      throw AppErrors.aiAssignment.projectSummaryFailed();
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post<AiProjectSummaryResponse>(
+          `${baseUrl}/api/v1/project-summary`,
+          payload,
+          {
+            timeout: 20000,
+          },
+        ),
+      );
+
+      return response.data;
+    } catch {
+      throw AppErrors.aiAssignment.projectSummaryFailed();
     }
   }
 }
