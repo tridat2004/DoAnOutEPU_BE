@@ -13,13 +13,11 @@ import { ProjectMember } from '../projects/entities/project-member.entity';
 import { User } from '../users/entities/user.entity';
 
 import { TasksService } from './tasks.service';
-import { BoardService } from './board.service';
 import { TaskCommentsService } from './task-comments.service';
 import { TaskHistoriesService } from './task-histories.service';
 
 import { TasksController } from './tasks.controller';
 import { TaskMetaController } from './task-meta.controller';
-import { BoardController } from './board.controller';
 import { TaskCommentsController } from './task-comments.controller';
 import { TaskHistoriesController } from './task-histories.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -42,19 +40,16 @@ import { NotificationsModule } from '../notifications/notifications.module';
   controllers: [
     TasksController,
     TaskMetaController,
-    BoardController,
     TaskCommentsController,
     TaskHistoriesController,
   ],
   providers: [
     TasksService,
-    BoardService,
     TaskCommentsService,
     TaskHistoriesService,
   ],
   exports: [
     TasksService,
-    BoardService,
     TaskCommentsService,
     TaskHistoriesService,
     TypeOrmModule,
