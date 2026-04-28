@@ -23,9 +23,12 @@ export class Notification extends BaseEntity {
   @Column({ name: 'related_url', type: 'varchar', length: 500, nullable: true })
   relatedUrl!: string | null;
 
-  @Column({ name: 'metadata_json', type: 'json', nullable: true })
+  @Column({ name: 'metadata_json', type: 'jsonb', nullable: true })
   metadataJson!: Record<string, unknown> | null;
 
   @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead!: boolean;
+
+  @Column({ name: 'read_at', type: 'timestamptz', nullable: true })
+  readAt!: Date | null;
 }

@@ -15,6 +15,7 @@ export class NotificationsController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListNotificationsDto,
   ) {
+    console.log('CURRENT_USER_NOTIFICATIONS:', currentUser);
     return this.notificationsService.getMyNotifications(currentUser, query);
   }
 

@@ -1,21 +1,21 @@
 import { IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from "class-validator";
 
 export class CreateProjectDto{
-    @IsString({message: 'Tên project phải là chuỗi'})
-    @IsNotEmpty({message: 'Tên project không được để trống'})
-    @MaxLength(255, {message: 'Tên project không được vượt quá 255 ký tự'})
+    @IsString({message: 'Name must be a string'})
+    @IsNotEmpty({message: 'Name is required'})
+    @MaxLength(255, {message: 'Name must not exceed 255 characters'})
     name: string;
 
-    @IsString({message:'Project key phải là chuỗi'})
-    @IsNotEmpty({message: 'Project key không được để trống'})
-    @MaxLength(20, {message: 'Project key không được vượt quá 20 ký tự'})
+    @IsString({message:'Project key must be a string'})
+    @IsNotEmpty({message: 'Project key is required'})
+    @MaxLength(20, {message: 'Project key must not exceed 20 characters'})
     @Matches(/^[A-Z0-9_]+$/, {
-        message: 'Project key chỉ được chứa chữ in hoa, số và dấu gạch dưới',
+        message: 'Project key can only contain uppercase letters, numbers and underscores',
     })
     projectKey: string;
 
     @IsOptional()
-    @IsString({message: 'Mô tả phải là chuỗi'})
-    @MaxLength(1000, {message: 'Mô tả không được vượt quá 1000 ký tự'})
+    @IsString({message: 'Description must be a string'})
+    @MaxLength(1000, {message: 'Description must not exceed 1000 characters'})
     description?: string;
 }

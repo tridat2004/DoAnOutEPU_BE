@@ -21,10 +21,12 @@ import { TaskMetaController } from './task-meta.controller';
 import { TaskCommentsController } from './task-comments.controller';
 import { TaskHistoriesController } from './task-histories.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   imports: [
     NotificationsModule,
+    ActivityModule,
     TypeOrmModule.forFeature([
       Task,
       TaskType,

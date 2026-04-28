@@ -520,6 +520,23 @@ export const APP_ERROR_DEFINITIONS = {
       message: 'Khong the tai danh sach role',
     },
   },
+  activity: {
+    activityCreateFailed: {
+      statusCode: 500,
+      error: 'ACTIVITY_CREATE_FAILED',
+      message: 'Khong the tao activity',
+    },
+    activityListFailed: {
+      statusCode: 500,
+      error: 'ACTIVITY_LIST_FAILED',
+      message: 'Khong the lay danh sach activity',
+    },
+    projectActivityListFailed: {
+      statusCode: 500,
+      error: 'PROJECT_ACTIVITY_LIST_FAILED',
+      message: 'Khong the lay activity cua project',
+    },
+  },
 } as const satisfies Record<string, Record<string, AppErrorDefinition>>;
 
 export class AppException extends HttpException {
@@ -728,6 +745,11 @@ export const AppErrors = {
   roles: {
     roleLoadFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.roles.roleLoadFailed),
+  },
+  activity: {
+    activityCreateFailed: () => new AppException(APP_ERROR_DEFINITIONS.activity.activityCreateFailed),
+    activityListFailed: () => new AppException(APP_ERROR_DEFINITIONS.activity.activityListFailed),
+    projectActivityListFailed: () => new AppException(APP_ERROR_DEFINITIONS.activity.projectActivityListFailed),
   },
 } as const;
 

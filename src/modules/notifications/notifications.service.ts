@@ -8,6 +8,8 @@ import { AppErrors, AppException } from '../../common/exceptions/exception';
 import { successResponse } from '../../common/response';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { NotificationsGateway } from './notifications.gateway';
+import { NotificationType } from './constants/notification-type.constant';
+import { error } from 'console';
 
 type CreateNotificationInput = {
     type: string;
@@ -16,12 +18,13 @@ type CreateNotificationInput = {
     relatedUrl?: string | null;
     metadataJson?: Record<string, unknown> | null;
 };
+
 @Injectable()
 export class NotificationsService {
     constructor(
         @InjectRepository(Notification)
         private readonly notificationRepository: Repository<Notification>,
-        private readonly notificationsGateway: NotificationsGateway
+        private readonly notificationsGateway: NotificationsGateway,
     ) { }
 
     async createNotification(userId: string, input: CreateNotificationInput) {
@@ -34,13 +37,15 @@ export class NotificationsService {
                 relatedUrl: input.relatedUrl ?? null,
                 metadataJson: input.metadataJson ?? null,
                 isRead: false,
+                readAt: null,
             });
+
             return await this.notificationRepository.save(notification);
         } catch (error) {
             if (error instanceof AppException) {
                 throw error;
             }
-            throw AppErrors.notification.notificationCreationFailed()
+            throw AppErrors.notification.notificationCreationFailed();
         }
     }
 
@@ -51,18 +56,25 @@ export class NotificationsService {
             where: { id: saved.id },
             relations: { user: true },
         });
-        if (!reloaded) throw AppErrors.notification.notificationCreationFailed();
+
+        if (!reloaded) {
+            throw AppErrors.notification.notificationCreationFailed();
+        }
 
         const payload = this.serializeNotification(reloaded);
+
         this.notificationsGateway.pushToUser(userId, payload);
 
         const unreadCount = await this.getUnreadCountValue(userId);
         this.notificationsGateway.pushUnreadCount(userId, unreadCount);
 
-        return reloaded
+        return reloaded;
     }
 
-    async getMyNotifications(currentUser: AuthenticatedUser, query: ListNotificationsDto) {
+    async getMyNotifications(
+        currentUser: AuthenticatedUser,
+        query: ListNotificationsDto,
+    ) {
         try {
             const page = query.page ?? 1;
             const limit = query.limit ?? 20;
@@ -73,24 +85,25 @@ export class NotificationsService {
                 .where('user.id = :userId', { userId: currentUser.id });
 
             if (query.isRead !== undefined) {
-                qb.andWhere('notification.is_read = :isRead', {
+                qb.andWhere('notification.isRead = :isRead', {
                     isRead: query.isRead,
-                })
+                });
             }
+
             if (query.type) {
                 qb.andWhere('notification.type = :type', {
                     type: query.type,
                 });
             }
 
-            qb.orderBy('notification.created_at', 'DESC')
+            qb.orderBy('notification.createdAt', 'DESC')
                 .skip((page - 1) * limit)
                 .take(limit);
 
             const [items, total] = await qb.getManyAndCount();
 
             return successResponse({
-                message: 'Lay danh sach thong bao thanh cong',
+                message: 'Get notifications list successfully',
                 data: {
                     items: items.map((item) => this.serializeNotification(item)),
                     pagination: {
@@ -98,21 +111,22 @@ export class NotificationsService {
                         limit,
                         total,
                         totalPage: Math.ceil(total / limit),
-                    }
-                }
-            })
-        } catch {
+                    },
+                },
+            });
+        } catch (error) {
+            console.error('NOTIFICATION_ERROR:', error);
             throw AppErrors.notification.notificationLoadFailed();
         }
     }
 
     async getUnreadCount(currentUser: AuthenticatedUser) {
-        const unreadCount = await this.getUnreadCountValue(currentUser.id)
+        const unreadCount = await this.getUnreadCountValue(currentUser.id);
 
         return successResponse({
-            message: 'Lay so thong bao chua doc thanh cong',
-            data: { unreadCount, }
-        })
+            message: 'Get unread count successfully',
+            data: { unreadCount },
+        });
     }
 
     async markAsRead(notificationId: string, currentUser: AuthenticatedUser) {
@@ -122,31 +136,39 @@ export class NotificationsService {
                 user: { id: currentUser.id },
             },
             relations: {
-                user: true
-            }
+                user: true,
+            },
         });
-        if (!notification) throw AppErrors.notification.notificationNotFound();
+
+        if (!notification) {
+            throw AppErrors.notification.notificationNotFound();
+        }
 
         if (notification.isRead) {
             return successResponse({
-                message: 'Thong bao da duoc danh dau da doc truoc do',
-                data: this.serializeNotification(notification)
-            })
+                message: 'Notification has been marked as read',
+                data: this.serializeNotification(notification),
+            });
         }
+
         try {
             notification.isRead = true;
-            const saved = await this.notificationRepository.save(notification)
+            notification.readAt = new Date();
+
+            const saved = await this.notificationRepository.save(notification);
 
             const payload = this.serializeNotification(saved);
             this.notificationsGateway.pushUpdateNotification(currentUser.id, payload);
 
             const unreadCount = await this.getUnreadCountValue(currentUser.id);
             this.notificationsGateway.pushUnreadCount(currentUser.id, unreadCount);
+
             return successResponse({
-                message: 'Danh dau thong bao da doc thanh cong',
+                message: 'Mark notification as read successfully',
                 data: payload,
             });
-        } catch {
+        } catch (error) {
+            console.error('NOTIFICATION_ERROR:', error);
             throw AppErrors.notification.notificationReadFailed();
         }
     }
@@ -156,21 +178,27 @@ export class NotificationsService {
             await this.notificationRepository
                 .createQueryBuilder()
                 .update(Notification)
-                .set({ isRead: true })
+                .set({
+                    isRead: true,
+                    readAt: () => 'CURRENT_TIMESTAMP',
+                })
                 .where('user_id = :userId', { userId: currentUser.id })
                 .andWhere('is_read = :isRead', { isRead: false })
                 .execute();
 
             const unreadCount = await this.getUnreadCountValue(currentUser.id);
+
             this.notificationsGateway.pushUnreadCount(currentUser.id, unreadCount);
+            this.notificationsGateway.pushMarkedAllAsRead(currentUser.id);
 
             return successResponse({
-                message: 'Danh dau tat ca thong bao da doc thanh cong',
+                message: 'Mark all notifications as read successfully',
                 data: {
                     unreadCount,
                 },
             });
-        } catch {
+        } catch (error) {
+            console.error('NOTIFICATION_ERROR:', error);
             throw AppErrors.notification.notificationReadFailed();
         }
     }
@@ -205,14 +233,93 @@ export class NotificationsService {
             this.notificationsGateway.pushUnreadCount(currentUser.id, unreadCount);
 
             return successResponse({
-                message: 'Xoa thong bao thanh cong',
+                message: 'Delete notification successfully',
                 data: {
                     id: notification.id,
                 },
             });
-        } catch {
+        } catch (error) {
+            console.error('NOTIFICATION_ERROR:', error);
             throw AppErrors.notification.notificationDeleteFailed();
         }
+    }
+
+    async notifyTaskAssigned(
+        userId: string,
+        taskCode: string,
+        taskId: string,
+        projectId: string,
+    ) {
+        return this.createAndPush(userId, {
+            type: NotificationType.TASK_ASSIGNED,
+            title: 'You have been assigned a new task',
+            message: `You have been assigned ${taskCode}`,
+            relatedUrl: `/projects/${projectId}/tasks/${taskId}`,
+            metadataJson: {
+                taskId,
+                taskCode,
+                projectId,
+            },
+        });
+    }
+
+    async notifyTaskCommented(
+        userId: string,
+        actorName: string,
+        taskCode: string,
+        taskId: string,
+        projectId: string,
+    ) {
+        return this.createAndPush(userId, {
+            type: NotificationType.TASK_COMMENTED,
+            title: 'New comment on task',
+            message: `${actorName} commented on ${taskCode}`,
+            relatedUrl: `/projects/${projectId}/tasks/${taskId}`,
+            metadataJson: {
+                actorName,
+                taskId,
+                taskCode,
+                projectId,
+            },
+        });
+    }
+
+    async notifyProjectMemberAdded(
+        userId: string,
+        projectName: string,
+        projectId: string,
+    ) {
+        return this.createAndPush(userId, {
+            type: NotificationType.PROJECT_MEMBER_ADDED,
+            title: 'You have been added to project',
+            message: `You have been added to project ${projectName}`,
+            relatedUrl: `/projects/${projectId}/members`,
+            metadataJson: {
+                projectId,
+                projectName,
+            },
+        });
+    }
+
+    async notifyTaskDeadlineChanged(
+        userId: string,
+        taskCode: string,
+        taskId: string,
+        projectId: string,
+        dueDate: Date | string | null,
+    ) {
+        return this.createAndPush(userId, {
+            type: NotificationType.TASK_DEADLINE_CHANGED,
+            title: 'Task deadline has changed',
+            message: `Deadline for ${taskCode} has been updated`,
+            relatedUrl: `/projects/${projectId}/tasks/${taskId}`,
+            metadataJson: {
+                taskId,
+                taskCode,
+                projectId,
+                dueDate,
+            },
+        });
     }
 
     private async getUnreadCountValue(userId: string) {
@@ -233,6 +340,7 @@ export class NotificationsService {
             relatedUrl: notification.relatedUrl,
             metadataJson: notification.metadataJson,
             isRead: notification.isRead,
+            readAt: notification.readAt,
             createdAt: notification.createdAt,
             updatedAt: notification.updatedAt,
         };

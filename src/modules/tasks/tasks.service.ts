@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository , Brackets} from 'typeorm';
+import { DataSource, Repository, Brackets } from 'typeorm';
 import { CreateTaskTypeDto } from './dto/create-task-type.dto';
 import { CreateTaskStatusDto } from './dto/create-task-status.dto';
 import { CreatePriorityDto } from './dto/create-priority.dto';
@@ -18,6 +18,10 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AppErrors, AppException } from '../../common/exceptions/exception';
 import { successPaginationResponse, successResponse } from '../../common/response';
 import { ListProjectTasksDto } from './dto/list-project-tasks.dto';
+import { ActivityAction } from '../activity/constants/activity-action.constant';
+import { ActivityTargetType } from '../activity/constants/activity-target.constant';
+import { ActivityService } from '../activity/activity.service';
+import { NotificationsService } from '../notifications/notifications.service';
 @Injectable()
 export class TasksService {
   constructor(
@@ -45,6 +49,9 @@ export class TasksService {
     private readonly userRepository: Repository<User>,
 
     private readonly taskHistoriesService: TaskHistoriesService,
+
+    private readonly activityService: ActivityService,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   async getTaskTypes() {
@@ -125,8 +132,29 @@ export class TasksService {
           dueDate: dto.dueDate || undefined,
           estimatedHours: dto.estimatedHours,
         });
-
-        return manager.save(Task, task)
+        const savedTask = await manager.save(Task, task);
+        if (assignee) {
+          await this.notificationsService.notifyTaskAssigned(
+            assignee.id,
+            savedTask.taskCode,
+            savedTask.id,
+            project.id,
+          );
+        }
+        await this.activityService.log({
+          actor: reporter,
+          project,
+          actionType: ActivityAction.TASK_CREATED,
+          targetType: ActivityTargetType.TASK,
+          targetId: savedTask.id,
+          message: `${reporter.fullName} da tao task ${savedTask.taskCode} - ${savedTask.title}`,
+          metadata: {
+            taskId: savedTask.id,
+            taskCode: savedTask.taskCode,
+            title: savedTask.title,
+          },
+        });
+        return savedTask
       })
       return successResponse({
         message: 'Tao task thanh cong',
@@ -235,54 +263,54 @@ export class TasksService {
       updatedAt: task.updatedAt,
       taskType: task.taskType
         ? {
-            id: task.taskType.id,
-            code: task.taskType.code,
-            name: task.taskType.name,
-          }
+          id: task.taskType.id,
+          code: task.taskType.code,
+          name: task.taskType.name,
+        }
         : null,
       status: task.status
         ? {
-            id: task.status.id,
-            code: task.status.code,
-            name: task.status.name,
-            color: task.status.color,
-            position: task.status.position,
-          }
+          id: task.status.id,
+          code: task.status.code,
+          name: task.status.name,
+          color: task.status.color,
+          position: task.status.position,
+        }
         : null,
       priority: task.priority
         ? {
-            id: task.priority.id,
-            code: task.priority.code,
-            name: task.priority.name,
-            weight: task.priority.weight,
-          }
+          id: task.priority.id,
+          code: task.priority.code,
+          name: task.priority.name,
+          weight: task.priority.weight,
+        }
         : null,
       reporter: task.reporter
         ? {
-            id: task.reporter.id,
-            email: task.reporter.email,
-            username: task.reporter.username,
-            fullName: task.reporter.fullName,
-            avatarUrl: task.reporter.avatarUrl,
-            isActive: task.reporter.isActive,
-          }
+          id: task.reporter.id,
+          email: task.reporter.email,
+          username: task.reporter.username,
+          fullName: task.reporter.fullName,
+          avatarUrl: task.reporter.avatarUrl,
+          isActive: task.reporter.isActive,
+        }
         : null,
       assignee: task.assignee
         ? {
-            id: task.assignee.id,
-            email: task.assignee.email,
-            username: task.assignee.username,
-            fullName: task.assignee.fullName,
-            avatarUrl: task.assignee.avatarUrl,
-            isActive: task.assignee.isActive,
-          }
+          id: task.assignee.id,
+          email: task.assignee.email,
+          username: task.assignee.username,
+          fullName: task.assignee.fullName,
+          avatarUrl: task.assignee.avatarUrl,
+          isActive: task.assignee.isActive,
+        }
         : null,
       parentTask: task.parentTask
         ? {
-            id: task.parentTask.id,
-            taskCode: task.parentTask.taskCode,
-            title: task.parentTask.title,
-          }
+          id: task.parentTask.id,
+          taskCode: task.parentTask.taskCode,
+          title: task.parentTask.title,
+        }
         : null,
     };
   }
@@ -503,6 +531,8 @@ export class TasksService {
     }
 
     try {
+      const previousAssigneeId = task.assignee?.id ?? null;
+      const previousDueDate = task.dueDate ?? null;
       const updatedTask = await this.taskRepository.save(task);
 
       if (changes.length > 0) {
@@ -512,7 +542,42 @@ export class TasksService {
           changes,
         );
       }
+      if (
+        updatedTask.assignee &&
+        updatedTask.assignee.id !== previousAssigneeId
+      ) {
+        await this.notificationsService.notifyTaskAssigned(
+          updatedTask.assignee.id,
+          updatedTask.taskCode,
+          updatedTask.id,
+          updatedTask.project.id,
+        );
+      }
 
+      if (
+        updatedTask.assignee &&
+        String(updatedTask.dueDate ?? null) !== String(previousDueDate ?? null)
+      ) {
+        await this.notificationsService.notifyTaskDeadlineChanged(
+          updatedTask.assignee.id,
+          updatedTask.taskCode,
+          updatedTask.id,
+          updatedTask.project.id,
+          updatedTask.dueDate ?? null,
+        );
+      }
+      await this.activityService.log({
+        actor: updatedByUser,
+        project: task.project,
+        actionType: ActivityAction.TASK_UPDATED,
+        targetType: ActivityTargetType.TASK,
+        targetId: task.id,
+        message: `${updatedByUser.fullName} da cap nhat task ${task.taskCode}`,
+        metadata: {
+          taskId: task.id,
+          taskCode: task.taskCode,
+        },
+      });
       return successResponse({
         message: 'Cap nhat task thanh cong',
         data: await this.taskRepository.findOne({

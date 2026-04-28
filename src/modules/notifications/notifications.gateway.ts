@@ -85,6 +85,11 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
             .to(this.userRoom(userId))
             .emit('notification:deleted', { id: notificationId });
     }
+    pushMarkedAllAsRead(userId: string) {
+        this.server.to(this.userRoom(userId)).emit('notification:read-all', {
+            message: 'All notifications marked as read',
+        });
+    }
     private extractAccessToken(client: Socket): string | undefined {
         const rawCookie = client.handshake.headers.cookie;
         if (!rawCookie) {

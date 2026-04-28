@@ -7,12 +7,12 @@ import {
 
 export class UpdateProjectDto {
   @IsOptional()
-  @IsString({ message: 'Tên project phải là chuỗi' })
+  @IsString({ message: 'Name must be a string' })
   @ValidateIf((_, value) => value !== undefined)
-  @MaxLength(150, { message: 'Tên project tối đa 150 ký tự' })
+  @MaxLength(150, { message: 'Name must not exceed 150 characters' })
   name?: string;
 
   @IsOptional()
-  @IsString({ message: 'Mô tả phải là chuỗi' })
+  @IsString({ message: 'Description must be a string' })
   description?: string;
 }

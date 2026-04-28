@@ -10,6 +10,9 @@ import { TaskHistoriesService } from '../tasks/task-histories.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AppErrors } from '../../common/exceptions/exception';
 import { successResponse } from '../../common/response';
+import { ActivityAction } from '../activity/constants/activity-action.constant';
+import { ActivityTargetType } from '../activity/constants/activity-target.constant';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class BoardService {
@@ -27,6 +30,8 @@ export class BoardService {
         private readonly userRepository: Repository<User>,
 
         private readonly taskHistoriesService: TaskHistoriesService,
+
+        private readonly activityService: ActivityService,
     ) { }
 
     async getBoard(projectId: string) {
@@ -185,7 +190,20 @@ export class BoardService {
             oldStatusName,
             nextStatus.name,
         );
-
+        await this.activityService.log({
+            actor: changedBy,
+            project: task.project,
+            actionType: ActivityAction.TASK_STATUS_CHANGED,
+            targetType: ActivityTargetType.TASK,
+            targetId: updatedTask.id,
+            message: `${changedBy.fullName} da chuyen ${updatedTask.taskCode} tu ${oldStatusName} sang ${nextStatus.name}`,
+            metadata: {
+                taskId: updatedTask.id,
+                taskCode: updatedTask.taskCode,
+                oldStatus: oldStatusName,
+                newStatus: nextStatus.name,
+            },
+        });
         return successResponse({
             message: 'Cap nhat status task thanh cong',
             data: {

@@ -11,7 +11,9 @@ import { AppErrors, AppException } from '../../common/exceptions/exception';
 import { successResponse } from '../../common/response';
 import { TaskHistoriesService } from './task-histories.service';
 import { NotificationsService } from '../notifications/notifications.service';
-
+import { ActivityAction } from '../activity/constants/activity-action.constant';
+import { ActivityTargetType } from '../activity/constants/activity-target.constant';
+import { ActivityService } from '../activity/activity.service';
 @Injectable()
 export class TaskCommentsService {
   constructor(
@@ -26,6 +28,7 @@ export class TaskCommentsService {
 
     private readonly taskHistoriesService: TaskHistoriesService,
     private readonly notificationsService: NotificationsService,
+    private readonly activityService: ActivityService
   ) { }
 
   async createComment(
@@ -41,6 +44,8 @@ export class TaskCommentsService {
       },
       relations: {
         project: true,
+        assignee: true,
+        reporter: true,
       },
     });
 
@@ -79,17 +84,13 @@ export class TaskCommentsService {
       }
 
       for (const receiverId of receiverIds) {
-        await this.notificationsService.createAndPush(receiverId, {
-          type: 'task_commented',
-          title: 'New comment on task',
-          message: `${author.fullName} commented on task ${task.taskCode}`,
-          relatedUrl: `/projects/${projectId}/tasks/${taskId}`,
-          metadataJson: {
-            projectId,
-            taskId,
-            authorUserId: author.id,
-          },
-        });
+        await this.notificationsService.notifyTaskCommented(
+          receiverId,
+          author.fullName,
+          task.taskCode,
+          task.id,
+          task.project.id,
+        );
       }
       await this.taskHistoriesService.createHistory(
         task,
@@ -98,7 +99,19 @@ export class TaskCommentsService {
         null,
         'comment_added',
       );
-
+      await this.activityService.log({
+        actor: author,
+        project: task.project,
+        actionType: ActivityAction.TASK_COMMENTED,
+        targetType: ActivityTargetType.COMMENT,
+        targetId: savedComment.id,
+        message: `${author.fullName} da binh luan trong task ${task.taskCode}`,
+        metadata: {
+          commentId: savedComment.id,
+          taskId: task.id,
+          taskCode: task.taskCode,
+        },
+      });
       return successResponse({
         message: 'Tao comment thanh cong',
         data: await this.taskCommentRepository.findOne({

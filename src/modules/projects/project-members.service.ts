@@ -11,6 +11,9 @@ import { AppErrors, AppException } from '../../common/exceptions/exception';
 import { successResponse } from '../../common/response';
 import { UpdateProjectMemberRoleDto } from './dto/update-project-member-role.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/constants/activity-action.constant';
+import { ActivityTargetType } from '../activity/constants/activity-target.constant';
 
 @Injectable()
 export class ProjectMembersService {
@@ -28,7 +31,9 @@ export class ProjectMembersService {
     private readonly userRepository: Repository<User>,
 
     private readonly notificationsService: NotificationsService,
-  ) {}
+
+    private readonly activityService: ActivityService
+  ) { }
 
   findByProjectAndUser(projectId: string, userId: string) {
     return this.projectMemberRepository.findOne({
@@ -48,42 +53,48 @@ export class ProjectMembersService {
     });
   }
 
-  async addMember( projectId: string, dto: AddProjectMemberDto, currentUser: AuthenticatedUser){
+  async addMember(projectId: string, dto: AddProjectMemberDto, currentUser: AuthenticatedUser) {
     const project = await this.projectRepository.findOne({
-      where: {id: projectId},
-      relations:{
+      where: { id: projectId },
+      relations: {
         owner: true
       }
     })
 
-    if(!project) throw AppErrors.project.projectNotFound()
+    if (!project) throw AppErrors.project.projectNotFound()
 
     const user = await this.userRepository.findOne({
-      where: {id: dto.userId}
+      where: { id: dto.userId }
     });
-    if(!user) throw AppErrors.auth.userNotFound();
+    if (!user) throw AppErrors.auth.userNotFound();
 
-    if(!user.isActive) throw AppErrors.auth.accountDisabled();
+    if (!user.isActive) throw AppErrors.auth.accountDisabled();
 
     const role = await this.roleRepository.findOne({
-      where: { id : dto.roleId}
+      where: { id: dto.roleId }
     });
 
-    if(!role) throw AppErrors.project.roleNotFound();
+    if (!role) throw AppErrors.project.roleNotFound();
+    
+    const currentUserEntity = await this.userRepository.findOne({
+      where: { id: currentUser.id }
+    });
+    if (!currentUserEntity) throw AppErrors.auth.userNotFound();
+    
     const exitstingMember = await this.projectMemberRepository.findOne({
-      where:{
-        project: {id: projectId},
-        user: {id: dto.userId},
+      where: {
+        project: { id: projectId },
+        user: { id: dto.userId },
       },
-      relations:{
-        role:true,
-        user:true
+      relations: {
+        role: true,
+        user: true
       },
     });
 
-    if(exitstingMember) throw AppErrors.project.memberAlreadyExists();
+    if (exitstingMember) throw AppErrors.project.memberAlreadyExists();
 
-    try{
+    try {
       const member = this.projectMemberRepository.create({
         project,
         user,
@@ -101,8 +112,22 @@ export class ProjectMembersService {
           roleCode: role.code,
         },
       });
+      await this.activityService.log({
+        actor: currentUserEntity,
+        project,
+        actionType: ActivityAction.PROJECT_MEMBER_ADDED,
+        targetType: ActivityTargetType.MEMBER,
+        targetId: savedMember.id,
+        message: `${currentUserEntity.fullName} da them ${user.fullName} vao project ${project.name}`,
+        metadata: {
+          memberId: savedMember.id,
+          addedUserId: user.id,
+          addedUserFullName: user.fullName,
+          role: role.name,
+        },
+      });
       return successResponse({
-        message:'Them thanh vien vao project thanh cong',
+        message: 'Them thanh vien vao project thanh cong',
         data: {
           id: savedMember.id,
           projectId: project.id,
@@ -121,27 +146,27 @@ export class ProjectMembersService {
           addedBy: currentUser.id,
         },
       })
-    }catch{
+    } catch {
       throw AppErrors.project.memberCreationFailed();
     }
   }
 
-  async getMember(projectId: string){
+  async getMember(projectId: string) {
     const project = await this.projectRepository.findOne({
-      where:{ id: projectId},
+      where: { id: projectId },
     });
-    if(!project) throw AppErrors.project.projectNotFound();
+    if (!project) throw AppErrors.project.projectNotFound();
 
     const members = await this.projectMemberRepository.find({
-      where:{
-        project: {id : projectId},
+      where: {
+        project: { id: projectId },
       },
 
-      relations:{
-        user:true,
-        role:true
+      relations: {
+        user: true,
+        role: true
       },
-      order:{
+      order: {
         createdAt: 'ASC',
       }
     })
@@ -167,41 +192,41 @@ export class ProjectMembersService {
     })
   }
 
-  async updateMemberRole(projectId: string, memberId: string, dto:UpdateProjectMemberRoleDto, currentUser: AuthenticatedUser){
+  async updateMemberRole(projectId: string, memberId: string, dto: UpdateProjectMemberRoleDto, currentUser: AuthenticatedUser) {
     const project = await this.projectRepository.findOne({
-      where: { id: projectId},
-      relations:{
+      where: { id: projectId },
+      relations: {
         owner: true,
       }
     });
-    if(!project){
+    if (!project) {
       throw AppErrors.project.projectNotFound();
     }
     const member = await this.projectMemberRepository.findOne({
-      where:{
+      where: {
         id: memberId,
-        project:{ id: projectId}
+        project: { id: projectId }
       },
-      relations:{
-        user:true,
+      relations: {
+        user: true,
         role: true,
         project: true,
       }
     })
 
-    if(!member) throw AppErrors.project.memberNotFound();
+    if (!member) throw AppErrors.project.memberNotFound();
 
     const nextRole = await this.roleRepository.findOne({
-      where: { id: dto.roleId},
+      where: { id: dto.roleId },
     });
 
-    if(!nextRole) throw AppErrors.project.roleNotFound();
-    if(member.user.id === project.owner.id){
+    if (!nextRole) throw AppErrors.project.roleNotFound();
+    if (member.user.id === project.owner.id) {
       throw AppErrors.project.ownerRoleChangeNotAllowed();
     }
 
     member.role = nextRole;
-    try{
+    try {
       const updatedMember = await this.projectMemberRepository.save(member);
 
       return successResponse({
@@ -223,41 +248,58 @@ export class ProjectMembersService {
           updatedBy: currentUser.id,
         },
       })
-    }catch(error){
-      if(error instanceof AppException){
+    } catch (error) {
+      if (error instanceof AppException) {
         throw error;
       }
       throw AppErrors.project.memberRoleUpdateFailed();
     }
   }
 
-  async removeMember(projectId: string, memberId: string, currentUser: AuthenticatedUser){
+  async removeMember(projectId: string, memberId: string, currentUser: AuthenticatedUser) {
     const project = await this.projectRepository.findOne({
-      where: { id: projectId},
-      relations:{ owner: true},
+      where: { id: projectId },
+      relations: { owner: true },
     });
 
     if (!project) throw AppErrors.project.projectNotFound();
 
+    const currentUserEntity = await this.userRepository.findOne({
+      where: { id: currentUser.id }
+    });
+    if (!currentUserEntity) throw AppErrors.auth.userNotFound();
+
     const member = await this.projectMemberRepository.findOne({
-      where:{
+      where: {
         id: memberId,
-        project: {id : projectId},
+        project: { id: projectId },
       },
-      relations:{
+      relations: {
         user: true,
         role: true,
       }
     });
 
-    if(!member) throw AppErrors.project.memberNotFound();
+    if (!member) throw AppErrors.project.memberNotFound();
 
-    if(member.user.id === project.owner.id){
+    if (member.user.id === project.owner.id) {
       throw AppErrors.project.ownerRemovalNotAllowed();
     }
-    try{
+    try {
       await this.projectMemberRepository.remove(member);
-
+      await this.activityService.log({
+  actor: currentUserEntity,
+  project,
+  actionType: ActivityAction.PROJECT_MEMBER_REMOVED,
+  targetType: ActivityTargetType.MEMBER,
+  targetId: member.id,
+  message: `${currentUserEntity.fullName} da xoa ${member.user.fullName} khoi project ${project.name}`,
+  metadata: {
+    memberId: member.id,
+    removedUserId: member.user.id,
+    removedUserFullName: member.user.fullName,
+  },
+});
       return successResponse({
         message: 'Xoa thanh vien khoi project thanh cong',
         data: {
@@ -267,8 +309,8 @@ export class ProjectMembersService {
           removedBy: currentUser.id,
         },
       })
-    }catch( error ){
-      if( error instanceof AppException){
+    } catch (error) {
+      if (error instanceof AppException) {
         throw error
       }
       throw AppErrors.project.memberDeletionFailed();

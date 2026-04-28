@@ -10,6 +10,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BoardModule } from './modules/board/board.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TimelineModule } from './modules/timeline/timeline.module';
     DashboardModule,
     BoardModule,
     TimelineModule,
+    ActivityModule,
   ],
 })
 export class AppModule {}

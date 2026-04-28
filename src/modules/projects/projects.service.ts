@@ -11,6 +11,9 @@ import { AppErrors, AppException } from "../../common/exceptions/exception";
 import { exit } from "process";
 import { successResponse } from "../../common/response";
 import { UpdateProjectDto } from "./dto/update-project.dto";
+import { ActivityAction } from '../activity/constants/activity-action.constant';
+import { ActivityTargetType } from '../activity/constants/activity-target.constant';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class ProjectsService {
@@ -28,6 +31,7 @@ export class ProjectsService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly activityService: ActivityService,
   ) { }
 
   async createProject(dto: CreateProjectDto, currentUser: AuthenticatedUser) {
@@ -86,12 +90,24 @@ export class ProjectsService {
         });
 
         await manager.save(ProjectMember, projectMember);
-
+        await this.activityService.log({
+          actor: owner,
+          project: savedProject,
+          actionType: ActivityAction.PROJECT_CREATED,
+          targetType: ActivityTargetType.PROJECT,
+          targetId: savedProject.id,
+          message: `${owner.fullName} da tao project ${savedProject.name}`,
+          metadata: {
+            projectId: savedProject.id,
+            projectKey: savedProject.projectKey,
+          },
+        });
         return savedProject;
+
       });
 
       return successResponse({
-        message: 'Tạo project thành công',
+        message: 'Create project successfully',
         data: {
           id: result.id,
           name: result.name,
@@ -145,7 +161,7 @@ export class ProjectsService {
     }
 
     return successResponse({
-      message: 'Lấy chi tiết project thành công',
+      message: 'Get project detail successfully',
       data: {
         id: membership.project.id,
         name: membership.project.name,
@@ -196,9 +212,9 @@ export class ProjectsService {
     });
 
     return successResponse({
-      message: 'Lấy danh sách project thành công',
+      message: 'Get project list successfully',
       data: memberships.map((item) => ({
-        id: item.project.id,           
+        id: item.project.id,
         createdAt: item.project.createdAt,
         updatedAt: item.project.updatedAt,
         name: item.project.name,
@@ -246,7 +262,7 @@ export class ProjectsService {
       dto.description !== undefined ? dto.description.trim() : undefined;
 
     if (dto.name !== undefined && !nextName) {
-      throw AppErrors.common.validationMessages(['Tên project không được để trống']);
+      throw AppErrors.common.validationMessages(['Name is required']);
     }
 
     if (nextName !== undefined) project.name = nextName;
@@ -256,7 +272,7 @@ export class ProjectsService {
       const updated = await this.projectRepository.save(project);
 
       return successResponse({
-        message: 'Cập nhật project thành công',
+        message: 'Update project successfully',
         data: {
           id: updated.id,
           name: updated.name,
@@ -281,7 +297,7 @@ export class ProjectsService {
   async deleteProject(projectId: string, currentUser: AuthenticatedUser) {
     const project = await this.projectRepository.findOne({
       where: { id: projectId },
-      relations: { owner: true }, 
+      relations: { owner: true },
     });
 
     if (!project) throw AppErrors.project.projectNotFound();
@@ -290,13 +306,13 @@ export class ProjectsService {
       throw AppErrors.project.permissionDenied();
     }
 
-    const deletedId = project.id; 
+    const deletedId = project.id;
 
     try {
       await this.projectRepository.remove(project);
 
       return successResponse({
-        message: 'Xoá project thành công',
+        message: 'Delete project successfully',
         data: {
           id: deletedId,
           deletedBy: currentUser.id,

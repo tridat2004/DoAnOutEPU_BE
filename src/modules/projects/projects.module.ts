@@ -11,11 +11,13 @@ import { ProjectMembersController } from './project-members.controller';
 import { ProjectsService } from './projects.service';
 import { ProjectMembersService } from './project-members.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Project, ProjectMember, Role, User]),
     NotificationsModule,
+    ActivityModule,
   ],
   controllers: [ProjectController, ProjectMembersController],
   providers: [ProjectsService, ProjectMembersService],
