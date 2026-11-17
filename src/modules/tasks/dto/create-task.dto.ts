@@ -1,5 +1,6 @@
 import {
   IsInt,
+  IsDateString,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -39,7 +40,7 @@ export class CreateTaskDto {
   parentTaskId?: string;
 
   @IsOptional()
-  @IsString({ message: 'dueDate phai la chuoi ngay hop le' })
+  @IsDateString({}, { message: 'dueDate khong hop le' })
   dueDate?: string;
 
   @IsOptional()

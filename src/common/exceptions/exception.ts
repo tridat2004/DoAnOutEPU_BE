@@ -54,6 +54,11 @@ export const APP_ERROR_DEFINITIONS = {
       error: 'INVALID_CREDENTIALS',
       message: 'Email hoac mat khau khong dung',
     },
+    tooManyLoginAttempts: {
+      statusCode: HttpStatus.TOO_MANY_REQUESTS,
+      error: 'TOO_MANY_LOGIN_ATTEMPTS',
+      message: 'Qua nhieu lan dang nhap sai, vui long thu lai sau',
+    },
     accountDisabled: {
       statusCode: HttpStatus.FORBIDDEN,
       error: 'ACCOUNT_DISABLED',
@@ -124,6 +129,11 @@ export const APP_ERROR_DEFINITIONS = {
       error: 'USERNAME_ALREADY_EXISTS',
       message: 'Username da ton tai',
     },
+    emailAlreadyExists: {
+      statusCode: HttpStatus.CONFLICT,
+      error: 'EMAIL_ALREADY_EXISTS',
+      message: 'Email da ton tai',
+    },
     passwordHashFailed: {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'PASSWORD_HASH_FAILED',
@@ -133,6 +143,11 @@ export const APP_ERROR_DEFINITIONS = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'ACCOUNT_CREATION_FAILED',
       message: 'Khong the tao tai khoan',
+    },
+    accountUpdateFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'ACCOUNT_UPDATE_FAILED',
+      message: 'Khong the cap nhat tai khoan',
     },
     forbidden: {
       statusCode: HttpStatus.FORBIDDEN,
@@ -191,6 +206,16 @@ export const APP_ERROR_DEFINITIONS = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'PROJECT_DELETE_FAILED',
       message: 'Khong the xoa project',
+    },
+    projectRestoreFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'PROJECT_RESTORE_FAILED',
+      message: 'Khong the khoi phuc project',
+    },
+    projectListLoadFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'PROJECT_LIST_LOAD_FAILED',
+      message: 'Khong the tai danh sach project',
     },
     projectUpdatePayloadEmpty: {
       statusCode: HttpStatus.BAD_REQUEST,
@@ -304,6 +329,11 @@ export const APP_ERROR_DEFINITIONS = {
       error: 'TASK_DELETE_FAILED',
       message: 'Khong the xoa task. Vui long kiem tra lai hoac lien he support',
     },
+    taskRestoreFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'TASK_RESTORE_FAILED',
+      message: 'Khong the khoi phuc task',
+    },
     taskUpdatePayloadEmpty: {
       statusCode: HttpStatus.BAD_REQUEST,
       error: 'TASK_UPDATE_PAYLOAD_EMPTY',
@@ -313,6 +343,56 @@ export const APP_ERROR_DEFINITIONS = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: 'BOARD_LOAD_FAILED',
       message: 'Khong the tai du lieu board',
+    },
+    boardNotFound: {
+      statusCode: HttpStatus.NOT_FOUND,
+      error: 'BOARD_NOT_FOUND',
+      message: 'Board khong ton tai trong project',
+    },
+    boardAlreadyExists: {
+      statusCode: HttpStatus.CONFLICT,
+      error: 'BOARD_ALREADY_EXISTS',
+      message: 'Ten board da ton tai trong project',
+    },
+    boardMustRemain: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'BOARD_MUST_REMAIN',
+      message: 'Project phai con it nhat mot board',
+    },
+    boardNotEmpty: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'BOARD_NOT_EMPTY',
+      message: 'Phai di chuyen hoac xoa het task truoc khi xoa board',
+    },
+    boardColumnNotFound: {
+      statusCode: HttpStatus.NOT_FOUND,
+      error: 'BOARD_COLUMN_NOT_FOUND',
+      message: 'Column khong ton tai trong board',
+    },
+    boardColumnAlreadyExists: {
+      statusCode: HttpStatus.CONFLICT,
+      error: 'BOARD_COLUMN_ALREADY_EXISTS',
+      message: 'Ten column da ton tai trong board',
+    },
+    boardColumnMustRemain: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'BOARD_COLUMN_MUST_REMAIN',
+      message: 'Board phai con it nhat mot column',
+    },
+    boardColumnNotEmpty: {
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'BOARD_COLUMN_NOT_EMPTY',
+      message: 'Phai di chuyen task sang column khac truoc khi xoa column',
+    },
+    boardColumnWipLimitReached: {
+      statusCode: HttpStatus.CONFLICT,
+      error: 'BOARD_COLUMN_WIP_LIMIT_REACHED',
+      message: 'Column da dat gioi han WIP',
+    },
+    boardUpdateFailed: {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: 'BOARD_UPDATE_FAILED',
+      message: 'Khong the cap nhat board hoac column',
     },
     taskStatusUpdateFailed: {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -586,6 +666,8 @@ export const AppErrors = {
   },
   auth: {
     invalidCredentials: () => new AppException(APP_ERROR_DEFINITIONS.auth.invalidCredentials),
+    tooManyLoginAttempts: () =>
+      new AppException(APP_ERROR_DEFINITIONS.auth.tooManyLoginAttempts),
     accountDisabled: () => new AppException(APP_ERROR_DEFINITIONS.auth.accountDisabled),
     accessTokenMissing: () => new AppException(APP_ERROR_DEFINITIONS.auth.accessTokenMissing),
     invalidAccessToken: () => new AppException(APP_ERROR_DEFINITIONS.auth.invalidAccessToken),
@@ -606,8 +688,10 @@ export const AppErrors = {
       new AppException(APP_ERROR_DEFINITIONS.auth.loginSessionCreationFailed),
     usernameAlreadyExists: () =>
       new AppException(APP_ERROR_DEFINITIONS.auth.usernameAlreadyExists),
+    emailAlreadyExists: () => new AppException(APP_ERROR_DEFINITIONS.auth.emailAlreadyExists),
     passwordHashFailed: () => new AppException(APP_ERROR_DEFINITIONS.auth.passwordHashFailed),
     accountCreationFailed: () => new AppException(APP_ERROR_DEFINITIONS.auth.accountCreationFailed),
+    accountUpdateFailed: () => new AppException(APP_ERROR_DEFINITIONS.auth.accountUpdateFailed),
     forbidden: () => new AppException(APP_ERROR_DEFINITIONS.auth.forbidden),
   },
   project: {
@@ -628,6 +712,10 @@ export const AppErrors = {
       new AppException(APP_ERROR_DEFINITIONS.project.projectUpdateFailed),
     projectDeleteFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.project.projectDeleteFailed),
+    projectRestoreFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.projectRestoreFailed),
+    projectListLoadFailed: () =>
+      new AppException(APP_ERROR_DEFINITIONS.project.projectListLoadFailed),
     projectUpdatePayloadEmpty: () =>
       new AppException(APP_ERROR_DEFINITIONS.project.projectUpdatePayloadEmpty),
     memberAlreadyExists: () =>
@@ -661,10 +749,26 @@ export const AppErrors = {
     taskCreationFailed: () => new AppException(APP_ERROR_DEFINITIONS.task.taskCreationFailed),
     taskUpdateFailed: () => new AppException(APP_ERROR_DEFINITIONS.task.taskUpdateFailed),
     taskDeleteFailed: () => new AppException(APP_ERROR_DEFINITIONS.task.taskDeleteFailed),
+    taskRestoreFailed: () => new AppException(APP_ERROR_DEFINITIONS.task.taskRestoreFailed),
     taskUpdatePayloadEmpty: () =>
       new AppException(APP_ERROR_DEFINITIONS.task.taskUpdatePayloadEmpty),
     boardLoadFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.task.boardLoadFailed),
+    boardNotFound: () => new AppException(APP_ERROR_DEFINITIONS.task.boardNotFound),
+    boardAlreadyExists: () => new AppException(APP_ERROR_DEFINITIONS.task.boardAlreadyExists),
+    boardMustRemain: () => new AppException(APP_ERROR_DEFINITIONS.task.boardMustRemain),
+    boardNotEmpty: () => new AppException(APP_ERROR_DEFINITIONS.task.boardNotEmpty),
+    boardColumnNotFound: () =>
+      new AppException(APP_ERROR_DEFINITIONS.task.boardColumnNotFound),
+    boardColumnAlreadyExists: () =>
+      new AppException(APP_ERROR_DEFINITIONS.task.boardColumnAlreadyExists),
+    boardColumnMustRemain: () =>
+      new AppException(APP_ERROR_DEFINITIONS.task.boardColumnMustRemain),
+    boardColumnNotEmpty: () =>
+      new AppException(APP_ERROR_DEFINITIONS.task.boardColumnNotEmpty),
+    boardColumnWipLimitReached: () =>
+      new AppException(APP_ERROR_DEFINITIONS.task.boardColumnWipLimitReached),
+    boardUpdateFailed: () => new AppException(APP_ERROR_DEFINITIONS.task.boardUpdateFailed),
     taskStatusUpdateFailed: () =>
       new AppException(APP_ERROR_DEFINITIONS.task.taskStatusUpdateFailed),
     commentNotFound: () => new AppException(APP_ERROR_DEFINITIONS.task.commentNotFound),

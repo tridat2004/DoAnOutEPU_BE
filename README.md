@@ -20,6 +20,33 @@ cp .env.example .env
 npm run start:dev
 ```
 
+## Khoi tao tai khoan Admin
+
+He thong khong mo API dang ky cong khai. Sau khi chay migration, tao tai khoan Admin dau tien bang bien moi truong trong `.env`:
+
+```bash
+npm run migration:run
+npm run seed:admin
+```
+
+Seed co the chay lai: neu dung cung `ADMIN_EMAIL` va `ADMIN_USERNAME`, tai khoan Admin se duoc cap nhat va mo khoa.
+
+## Seed role, permission va tai khoan demo
+
+```bash
+npm run seed
+```
+
+Lenh nay seed ma tran permission, project `DEMO` va cac tai khoan:
+
+- `system.admin@example.com`: system role `ADMIN`
+- `project.admin@example.com`: project role `admin`
+- `manager@example.com`: project role `manager`
+- `member@example.com`: project role `member`
+- `viewer@example.com`: project role `viewer`
+
+Mat khau chung lay tu `SEED_DEFAULT_PASSWORD`. Seed co the chay lai ma khong tao trung du lieu.
+
 ## Thư viện chính đang dùng
 
 - `@nestjs/common`

@@ -1,5 +1,15 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class ListProjectTasksDto {
   @IsOptional()
@@ -18,6 +28,18 @@ export class ListProjectTasksDto {
   @IsString({ message: 'keyword phai la chuoi' })
   @MaxLength(255, { message: 'keyword toi da 255 ky tu' })
   keyword?: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'dueFrom khong hop le' })
+  dueFrom?: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'dueTo khong hop le' })
+  dueTo?: string;
+
+  @IsOptional()
+  @IsIn(['mine', 'due_soon', 'overdue'], { message: 'quickFilter khong hop le' })
+  quickFilter?: 'mine' | 'due_soon' | 'overdue';
 
   @IsOptional()
   @Transform(({ value }) => Number(value ?? 1))

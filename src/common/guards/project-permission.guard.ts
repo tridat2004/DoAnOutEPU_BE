@@ -5,6 +5,7 @@ import { validate as validateUUID } from 'uuid';
 import { AppErrors } from '../exceptions/exception';
 import { PROJECT_PERMISSIONS_KEY } from '../../modules/auth/constants/auth.constants';
 import { ProjectMembersService } from '../../modules/projects/project-members.service';
+import { SystemRole } from '../../modules/auth/constants/system-role.constant';
 
 @Injectable()
 export class ProjectPermissionGuard implements CanActivate {
@@ -31,16 +32,17 @@ export class ProjectPermissionGuard implements CanActivate {
       throw AppErrors.project.authRequired();
     }
 
+    if (user.systemRole === SystemRole.ADMIN) {
+      return true;
+    }
+
     const projectId = this.extractProjectId(request);
 
     if (!projectId) {
       throw AppErrors.project.projectIdMissing();
     }
 
-    const projectMember = await this.projectMembersService.findByProjectAndUser(
-      projectId,
-      user.id,
-    );
+    const projectMember = await this.projectMembersService.findByProjectAndUser(projectId, user.id);
 
     if (!projectMember) {
       throw AppErrors.project.membershipRequired();

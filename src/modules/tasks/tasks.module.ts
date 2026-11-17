@@ -26,6 +26,7 @@ import { TaskCommentAttachment } from './entities/task-comment-attachment.entity
 import { TaskCommentReaction } from './entities/task-comment-reaction.entity';
 import { TaskAttachmentsController } from './task-attachments.controller';
 import { TaskAttachmentsService } from './task-attachments.service';
+import { BoardColumn } from '../board/entities/board-column.entity';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { TaskAttachmentsService } from './task-attachments.service';
       ProjectMember,
       User,
       TaskCommentAttachment,
-      TaskCommentReaction
+      TaskCommentReaction,
+      BoardColumn,
     ]),
   ],
   controllers: [

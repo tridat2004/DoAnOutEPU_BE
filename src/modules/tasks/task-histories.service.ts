@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { TaskHistory } from './entities/task-history.entity';
 import { Task } from './entities/task.entity';
@@ -21,9 +21,11 @@ export class TaskHistoriesService {
     fieldName: string,
     oldValue: string | null,
     newValue: string | null,
+    manager?: EntityManager,
   ) {
     try {
-      const history = this.taskHistoryRepository.create({
+      const repository = manager ? manager.getRepository(TaskHistory) : this.taskHistoryRepository;
+      const history = repository.create({
         task,
         changedBy,
         fieldName,
@@ -31,7 +33,7 @@ export class TaskHistoriesService {
         newValue,
       });
 
-      return await this.taskHistoryRepository.save(history);
+      return await repository.save(history);
     } catch {
       throw AppErrors.task.historyCreationFailed();
     }
@@ -45,14 +47,16 @@ export class TaskHistoriesService {
       oldValue: string | null;
       newValue: string | null;
     }>,
+    manager?: EntityManager,
   ) {
     if (!changes.length) {
       return;
     }
 
     try {
+      const repository = manager ? manager.getRepository(TaskHistory) : this.taskHistoryRepository;
       const histories = changes.map((change) =>
-        this.taskHistoryRepository.create({
+        repository.create({
           task,
           changedBy,
           fieldName: change.fieldName,
@@ -61,7 +65,7 @@ export class TaskHistoriesService {
         }),
       );
 
-      await this.taskHistoryRepository.save(histories);
+      await repository.save(histories);
     } catch {
       throw AppErrors.task.historyCreationFailed();
     }

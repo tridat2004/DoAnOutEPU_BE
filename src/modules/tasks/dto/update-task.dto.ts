@@ -1,11 +1,4 @@
-import {
-  IsInt,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsInt, IsDateString, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -22,10 +15,6 @@ export class UpdateTaskDto {
   taskTypeId?: string;
 
   @IsOptional()
-  @IsUUID('4', { message: 'statusId khong hop le' })
-  statusId?: string;
-
-  @IsOptional()
   @IsUUID('4', { message: 'priorityId khong hop le' })
   priorityId?: string;
 
@@ -38,7 +27,7 @@ export class UpdateTaskDto {
   parentTaskId?: string | null;
 
   @IsOptional()
-  @IsString({ message: 'dueDate phai la chuoi ngay hop le' })
+  @IsDateString({}, { message: 'dueDate khong hop le' })
   dueDate?: string | null;
 
   @IsOptional()

@@ -15,6 +15,8 @@ import { TaskStatus } from '../modules/tasks/entities/task-status.entity';
 import { TaskType } from '../modules/tasks/entities/task-type.entity';
 import { Task } from '../modules/tasks/entities/task.entity';
 import { User } from '../modules/users/entities/user.entity';
+import { Board } from '../modules/board/entities/board.entity';
+import { BoardColumn } from '../modules/board/entities/board-column.entity';
 
 export const databaseEntities = [
   User,
@@ -23,6 +25,8 @@ export const databaseEntities = [
   RolePermission,
   Project,
   ProjectMember,
+  Board,
+  BoardColumn,
   TaskType,
   TaskStatus,
   Priority,
@@ -34,5 +38,5 @@ export const databaseEntities = [
   Notification,
   ActivityLog,
   TaskCommentAttachment,
-  TaskCommentReaction
+  TaskCommentReaction,
 ] as const;

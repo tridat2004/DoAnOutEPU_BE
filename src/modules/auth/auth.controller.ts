@@ -14,8 +14,6 @@ import { LoginDto } from './dto/login.dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
-import { RegisterDto } from './dto/register.dto';
-import { successResponse } from '../../common/response';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -56,15 +54,6 @@ export class AuthController {
   @ApiCookieAuth('access_token')
   @Get('me')
   async me(@CurrentUser() user: AuthenticatedUser) {
-    return successResponse({
-      message: ' Lay thong tin user thanh cong',
-      data: user
-    });
-  }
-
-  @Public()
-  @Post('register')
-  async register(@Body() body: RegisterDto) {
-    return this.authService.register(body);
+    return this.authService.getAuthProfile(user.id);
   }
 }

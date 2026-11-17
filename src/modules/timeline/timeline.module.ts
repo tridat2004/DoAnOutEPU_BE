@@ -6,9 +6,10 @@ import { TimelineService } from './timeline.service';
 
 import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/entities/project.entity';
+import { TaskStatus } from '../tasks/entities/task-status.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Task, Project])],
+  imports: [TypeOrmModule.forFeature([Task, Project, TaskStatus])],
   controllers: [TimelineController],
   providers: [TimelineService],
   exports: [TimelineService],

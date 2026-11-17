@@ -1,13 +1,27 @@
 export const ActivityAction = {
   PROJECT_CREATED: 'project_created',
+  PROJECT_UPDATED: 'project_updated',
+  PROJECT_ARCHIVED: 'project_archived',
+  PROJECT_UNARCHIVED: 'project_unarchived',
+  PROJECT_DELETED: 'project_deleted',
+  PROJECT_RESTORED: 'project_restored',
+  BOARD_CREATED: 'board_created',
+  BOARD_UPDATED: 'board_updated',
+  BOARD_DELETED: 'board_deleted',
+  BOARD_COLUMN_CREATED: 'board_column_created',
+  BOARD_COLUMN_UPDATED: 'board_column_updated',
+  BOARD_COLUMN_REORDERED: 'board_column_reordered',
+  BOARD_COLUMN_DELETED: 'board_column_deleted',
   TASK_CREATED: 'task_created',
   TASK_UPDATED: 'task_updated',
   TASK_STATUS_CHANGED: 'task_status_changed',
+  TASK_MOVED: 'task_moved',
+  TASK_DELETED: 'task_deleted',
+  TASK_RESTORED: 'task_restored',
   TASK_ASSIGNEE_CHANGED: 'task_assignee_changed',
   TASK_COMMENTED: 'task_commented',
   PROJECT_MEMBER_ADDED: 'project_member_added',
   PROJECT_MEMBER_REMOVED: 'project_member_removed',
 } as const;
 
-export type ActivityActionType =
-  (typeof ActivityAction)[keyof typeof ActivityAction];
+export type ActivityActionType = (typeof ActivityAction)[keyof typeof ActivityAction];

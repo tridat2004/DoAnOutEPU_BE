@@ -5,8 +5,6 @@ import cookieParser from 'cookie-parser';
 import { GlobalExceptionFilter } from './common/exceptions/exception-handler';
 import { AppErrors } from './common/exceptions/exception';
 import { AppModule } from './app.module';
-import * as express from 'express';
-import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const globalPrefix = 'api/v1';
@@ -56,6 +54,5 @@ async function bootstrap() {
   });
 
   await app.listen(process.env.PORT || 3000);
-  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 }
 bootstrap();

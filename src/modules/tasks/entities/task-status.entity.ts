@@ -6,6 +6,7 @@ import {
 } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Task } from './task.entity';
+import { BoardColumn } from '../../board/entities/board-column.entity';
 
 @Entity('task_statuses')
 export class TaskStatus extends BaseEntity {
@@ -24,4 +25,7 @@ export class TaskStatus extends BaseEntity {
 
   @OneToMany(() => Task, (task) => task.status)
   tasks: Task[];
+
+  @OneToMany(() => BoardColumn, (column) => column.status)
+  boardColumns!: BoardColumn[];
 }

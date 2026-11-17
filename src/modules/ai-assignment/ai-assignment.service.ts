@@ -14,17 +14,12 @@ import { AiAssignmentLog } from './entities/ai-assignment-log.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/entities/project.entity';
 import { ProjectMember } from '../projects/entities/project-member.entity';
-import {
-  AiRecommendPayload,
-  AiRecommendResponse,
-} from './types/recommendation.types';
+import { AiRecommendPayload, AiRecommendResponse } from './types/recommendation.types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { SystemRole } from '../auth/constants/system-role.constant';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DashboardService } from '../dashboard/dashboard.service';
-import {
-  AiProjectSummaryPayload,
-  AiProjectSummaryResponse,
-} from './types/project-summary.types';
+import { AiProjectSummaryPayload, AiProjectSummaryResponse } from './types/project-summary.types';
 import { TaskComment } from '../tasks/entities/task-comment.entity';
 import { TaskHistory } from '../tasks/entities/task-history.entity';
 import {
@@ -63,12 +58,12 @@ export class AiAssignmentService {
 
     @InjectRepository(TaskHistory)
     private readonly taskHistoryRepository: Repository<TaskHistory>,
-  ) { }
+  ) {}
 
   async createUserSkill(userId: string, dto: CreateUserSkillDto) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-    })
+    });
     if (!user) throw AppErrors.auth.userNotFound();
 
     const normalizedSkillName = dto.skillName.trim().toLowerCase();
@@ -80,8 +75,8 @@ export class AiAssignmentService {
       },
       relations: {
         user: true,
-      }
-    })
+      },
+    });
     if (existingSkill) throw AppErrors.aiAssignment.skillAlreadyExists();
     try {
       const skill = this.userSkillRepository.create({
@@ -98,7 +93,7 @@ export class AiAssignmentService {
           userId: user.id,
           skillName: savedSkill.skillName,
           levelScore: savedSkill.levelScore,
-        }
+        },
       });
     } catch (error) {
       if (error instanceof AppException) {
@@ -146,7 +141,7 @@ export class AiAssignmentService {
       },
       relations: {
         user: true,
-      }
+      },
     });
     if (!skill) throw AppErrors.aiAssignment.skillNotFound();
     if (dto.skillName === undefined && dto.levelScore === undefined) {
@@ -166,7 +161,7 @@ export class AiAssignmentService {
         },
         relations: {
           user: true,
-        }
+        },
       });
       if (duplicateSkill && duplicateSkill.id !== skill.id) {
         throw AppErrors.aiAssignment.skillAlreadyExists();
@@ -189,8 +184,8 @@ export class AiAssignmentService {
           userId,
           skillName: updatedSkill.skillName,
           levelScore: updatedSkill.levelScore,
-        }
-      })
+        },
+      });
     } catch {
       throw AppErrors.aiAssignment.skillUpdateFailed();
     }
@@ -203,8 +198,8 @@ export class AiAssignmentService {
         user: { id: userId },
       },
       relations: {
-        user: true
-      }
+        user: true,
+      },
     });
     if (!skill) throw AppErrors.aiAssignment.skillNotFound();
     try {
@@ -239,7 +234,7 @@ export class AiAssignmentService {
         priority: true,
         reporter: true,
         assignee: true,
-      }
+      },
     });
     if (!task) throw AppErrors.task.taskNotFound();
 
@@ -250,8 +245,8 @@ export class AiAssignmentService {
       relations: {
         user: true,
         role: true,
-      }
-    })
+      },
+    });
     if (!members.length) throw AppErrors.aiAssignment.noCandidates();
     const userIds = members.map((member) => member.user.id);
 
@@ -261,8 +256,8 @@ export class AiAssignmentService {
       },
       relations: {
         user: true,
-      }
-    })
+      },
+    });
     const workloadRows = await this.taskRepository
       .createQueryBuilder('task')
       .select('task.assignee_user_id', 'userId')
@@ -283,7 +278,7 @@ export class AiAssignmentService {
 
     const recommendedMember = members.find(
       (members) => members.user.id === aiResult.recommendedUserId,
-    )
+    );
     if (!recommendedMember) throw AppErrors.aiAssignment.invalidRecommendation();
     try {
       const log = this.aiAssignmentLogRepository.create({
@@ -322,7 +317,6 @@ export class AiAssignmentService {
       console.error('AI LOG SAVE ERROR:', error);
       throw AppErrors.aiAssignment.recommendationLogFailed();
     }
-
   }
   private buildRecommendationPayload(
     task: Task,
@@ -396,11 +390,10 @@ export class AiAssignmentService {
     }
   }
 
-
   async getLatesRecommendation(projectId: string, taskId: string) {
     const task = await this.taskRepository.findOne({
-      where: { id: taskId, project: { id: projectId }, },
-    })
+      where: { id: taskId, project: { id: projectId } },
+    });
     if (!task) throw AppErrors.task.taskNotFound();
 
     try {
@@ -413,8 +406,8 @@ export class AiAssignmentService {
           recommendedUser: true,
         },
         order: {
-          createdAt: 'DESC'
-        }
+          createdAt: 'DESC',
+        },
       });
       if (!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
 
@@ -437,8 +430,8 @@ export class AiAssignmentService {
           reasonText: latestLog.reasonText,
           scoreBreakdownJson: latestLog.scoreBreakdownJson,
           createdAt: latestLog.createdAt,
-        }
-      })
+        },
+      });
     } catch (error) {
       if (error instanceof AppException) {
         throw error;
@@ -452,8 +445,8 @@ export class AiAssignmentService {
       where: {
         id: taskId,
         project: { id: projectId },
-      }
-    })
+      },
+    });
     if (!task) throw AppErrors.task.taskNotFound();
 
     try {
@@ -483,13 +476,17 @@ export class AiAssignmentService {
           scoreBreakdownJson: log.scoreBreakdownJson,
           createdAt: log.createdAt,
         })),
-      })
+      });
     } catch {
       throw AppErrors.aiAssignment.recommendationLoadFailed();
     }
   }
 
-  async applyLatestRecommendation(projectId: string, taskId: string, currentUser: AuthenticatedUser) {
+  async applyLatestRecommendation(
+    projectId: string,
+    taskId: string,
+    currentUser: AuthenticatedUser,
+  ) {
     const task = await this.taskRepository.findOne({
       where: {
         id: taskId,
@@ -503,7 +500,7 @@ export class AiAssignmentService {
         priority: true,
         reporter: true,
         parentTask: true,
-      }
+      },
     });
 
     if (!task) throw AppErrors.task.taskNotFound();
@@ -518,7 +515,7 @@ export class AiAssignmentService {
       },
       order: {
         createdAt: 'DESC',
-      }
+      },
     });
     if (!latestLog) throw AppErrors.aiAssignment.recommendationNotFound();
 
@@ -530,10 +527,10 @@ export class AiAssignmentService {
       },
       relations: {
         user: true,
-
-      }
-    })
-    if (!membership || !membership.user.isActive) throw AppErrors.aiAssignment.recommendationUserInvalid();
+      },
+    });
+    if (!membership || !membership.user.isActive)
+      throw AppErrors.aiAssignment.recommendationUserInvalid();
 
     const updatedByUser = await this.userRepository.findOne({
       where: { id: currentUser.id },
@@ -555,7 +552,7 @@ export class AiAssignmentService {
           },
           aiLogId: latestLog.id,
         },
-      })
+      });
     }
     task.assignee = recommendedUser;
 
@@ -596,27 +593,25 @@ export class AiAssignmentService {
             fullName: recommendedUser.fullName,
           },
           appliedBy: currentUser.id,
-        }
-      })
+        },
+      });
     } catch {
       throw AppErrors.aiAssignment.aiAssignFailed();
     }
   }
 
   async getProjectSummary(projectId: string) {
-    const dashboardResponse = await this.dashboardService.getProjectDashboard(
-      projectId,
-      {
-        id: 'System',
-        email: '',
-        username: '',
-        fullName: '',
-        isActive: true,
-      }
-    )
+    const dashboardResponse = await this.dashboardService.getProjectDashboard(projectId, {
+      id: 'System',
+      email: '',
+      username: '',
+      fullName: '',
+      isActive: true,
+      systemRole: SystemRole.ADMIN,
+    });
     const dashboardData = dashboardResponse.data;
     const payload = this.buildProjectSummaryPayload(dashboardData);
-    const result = await this.callAiProjectSummaryService(payload)
+    const result = await this.callAiProjectSummaryService(payload);
 
     if (
       !result?.overallSummary ||
@@ -630,12 +625,9 @@ export class AiAssignmentService {
     return successResponse({
       message: 'AI tao project summary thanh cong',
       data: result,
-    })
-
+    });
   }
-  private buildProjectSummaryPayload(
-    dashboardData: any,
-  ): AiProjectSummaryPayload {
+  private buildProjectSummaryPayload(dashboardData: any): AiProjectSummaryPayload {
     return {
       project: {
         id: dashboardData.project.id,
@@ -672,17 +664,13 @@ export class AiAssignmentService {
         totalRecommendations: dashboardData.aiUsageSummary.totalRecommendations,
         latestRecommendation: dashboardData.aiUsageSummary.latestRecommendation
           ? {
-            taskCode: dashboardData.aiUsageSummary.latestRecommendation.taskCode,
-            recommendedUserFullName:
-              dashboardData.aiUsageSummary.latestRecommendation.recommendedUser
-                .fullName,
-            finalScore:
-              dashboardData.aiUsageSummary.latestRecommendation.finalScore,
-            reasonText:
-              dashboardData.aiUsageSummary.latestRecommendation.reasonText,
-            createdAt:
-              dashboardData.aiUsageSummary.latestRecommendation.createdAt,
-          }
+              taskCode: dashboardData.aiUsageSummary.latestRecommendation.taskCode,
+              recommendedUserFullName:
+                dashboardData.aiUsageSummary.latestRecommendation.recommendedUser.fullName,
+              finalScore: dashboardData.aiUsageSummary.latestRecommendation.finalScore,
+              reasonText: dashboardData.aiUsageSummary.latestRecommendation.reasonText,
+              createdAt: dashboardData.aiUsageSummary.latestRecommendation.createdAt,
+            }
           : null,
       },
       recentActivities: dashboardData.recentActivities.map((item: any) => ({
@@ -711,7 +699,7 @@ export class AiAssignmentService {
           `${baseUrl}/api/v1/project-summary`,
           payload,
           {
-            timeout: 20000,
+            timeout: 45000,
           },
         ),
       );
@@ -725,16 +713,14 @@ export class AiAssignmentService {
   }
 
   async getProjectRiskSummary(projectId: string) {
-    const dashboardResponse = await this.dashboardService.getProjectDashboard(
-      projectId,
-      {
-        id: 'system',
-        email: '',
-        username: '',
-        fullName: '',
-        isActive: true,
-      }
-    );
+    const dashboardResponse = await this.dashboardService.getProjectDashboard(projectId, {
+      id: 'system',
+      email: '',
+      username: '',
+      fullName: '',
+      isActive: true,
+      systemRole: SystemRole.ADMIN,
+    });
 
     const dashboarData = dashboardResponse.data;
 
@@ -750,7 +736,7 @@ export class AiAssignmentService {
       },
       order: {
         updatedAt: 'DESC',
-      }
+      },
     });
 
     const payload = this.buildProjectRiskSummaryPayload(dashboarData, task);
@@ -769,7 +755,7 @@ export class AiAssignmentService {
     return successResponse({
       message: 'AI tao project risk summary thanh cong',
       data: result,
-    })
+    });
   }
   private buildProjectRiskSummaryPayload(
     dashboardData: any,
@@ -848,7 +834,7 @@ export class AiAssignmentService {
           `${baseUrl}/api/v1/project-risk-summary`,
           payload,
           {
-            timeout: 20000,
+            timeout: 45000,
           },
         ),
       );
@@ -916,14 +902,8 @@ export class AiAssignmentService {
       const workload = await this.taskRepository
         .createQueryBuilder('task')
         .leftJoin('task.status', 'status')
-        .select(
-          `SUM(CASE WHEN status.code != 'done' THEN 1 ELSE 0 END)`,
-          'openCount',
-        )
-        .addSelect(
-          `SUM(CASE WHEN status.code = 'done' THEN 1 ELSE 0 END)`,
-          'doneCount',
-        )
+        .select(`SUM(CASE WHEN status.code != 'done' THEN 1 ELSE 0 END)`, 'openCount')
+        .addSelect(`SUM(CASE WHEN status.code = 'done' THEN 1 ELSE 0 END)`, 'doneCount')
         .where('task.project_id = :projectId', { projectId })
         .andWhere('task.assignee_user_id = :assigneeUserId', {
           assigneeUserId: task.assignee.id,
@@ -936,12 +916,7 @@ export class AiAssignmentService {
       };
     }
 
-    const payload = this.buildTaskRiskPayload(
-      task,
-      recentActivities,
-      comments,
-      workloadContext,
-    );
+    const payload = this.buildTaskRiskPayload(task, recentActivities, comments, workloadContext);
 
     const result = await this.callAiTaskRiskService(payload);
 
@@ -1007,9 +982,7 @@ export class AiAssignmentService {
     };
   }
 
-  private async callAiTaskRiskService(
-    payload: AiTaskRiskPayload,
-  ): Promise<AiTaskRiskResponse> {
+  private async callAiTaskRiskService(payload: AiTaskRiskPayload): Promise<AiTaskRiskResponse> {
     const baseUrl = process.env.AI_AGENT_BASE_URL;
 
     if (!baseUrl) {
@@ -1018,13 +991,9 @@ export class AiAssignmentService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post<AiTaskRiskResponse>(
-          `${baseUrl}/api/v1/task-risk`,
-          payload,
-          {
-            timeout: 20000,
-          },
-        ),
+        this.httpService.post<AiTaskRiskResponse>(`${baseUrl}/api/v1/task-risk`, payload, {
+          timeout: 45000,
+        }),
       );
 
       return response.data;

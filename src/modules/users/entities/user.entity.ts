@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  Index,
-  OneToMany,
-} from 'typeorm';
+import { Entity, Column, Index, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { ProjectMember } from '../../projects/entities/project-member.entity';
@@ -12,6 +7,7 @@ import { TaskComment } from '../../tasks/entities/task-comment.entity';
 import { TaskHistory } from '../../tasks/entities/task-history.entity';
 import { UserSkill } from '../../ai-assignment/entities/user-skill.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
+import { SystemRole } from '../../auth/constants/system-role.constant';
 @Entity('users')
 export class User extends BaseEntity {
   @Index({ unique: true })
@@ -33,6 +29,15 @@ export class User extends BaseEntity {
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
+
+  @Column({
+    name: 'system_role',
+    type: 'enum',
+    enum: SystemRole,
+    enumName: 'user_system_role_enum',
+    default: SystemRole.USER,
+  })
+  systemRole: SystemRole;
 
   @OneToMany(() => Project, (project) => project.owner)
   ownedProjects: Project[];

@@ -17,13 +17,13 @@ export class ActivityLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Project, { nullable: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Project, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'project_id' })
   project?: Project | null;
 
-  @ManyToOne(() => User, { nullable: false, onDelete: 'SET NULL' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'actor_user_id' })
-  actor: User;
+  actor: User | null;
 
   @Column({ name: 'action_type', type: 'varchar', length: 100 })
   actionType: string;

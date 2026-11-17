@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 
 import { Task } from '../tasks/entities/task.entity';
 import { Project } from '../projects/entities/project.entity';
+import { TaskStatus } from '../tasks/entities/task-status.entity';
 import { AppErrors } from '../../common/exceptions/exception';
 import { successResponse } from '../../common/response';
 
@@ -15,6 +16,9 @@ export class TimelineService {
 
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+
+    @InjectRepository(TaskStatus)
+    private readonly taskStatusRepository: Repository<TaskStatus>,
   ) {}
 
   async getTimeline(projectId: string) {
@@ -25,6 +29,13 @@ export class TimelineService {
     if (!project) {
       throw AppErrors.project.projectNotFound();
     }
+
+    const statuses = await this.taskStatusRepository.find({
+      order: {
+        position: 'ASC',
+        createdAt: 'ASC',
+      },
+    });
 
     const tasks = await this.taskRepository.find({
       where: {
@@ -37,6 +48,7 @@ export class TimelineService {
         taskType: true,
       },
       order: {
+        position: 'ASC',
         createdAt: 'ASC',
       },
     });
@@ -49,6 +61,15 @@ export class TimelineService {
           name: project.name,
           projectKey: project.projectKey,
         },
+
+        statuses: statuses.map((status) => ({
+          id: status.id,
+          code: status.code,
+          name: status.name,
+          color: status.color ?? null,
+          position: status.position ?? null,
+        })),
+
         items: tasks.map((task) => ({
           id: task.id,
           taskCode: task.taskCode,
@@ -56,14 +77,18 @@ export class TimelineService {
           startDate: task.createdAt,
           dueDate: task.dueDate,
           estimatedHours: task.estimatedHours,
+          position: task.position,
+
           status: task.status
             ? {
                 id: task.status.id,
                 code: task.status.code,
                 name: task.status.name,
-                color: task.status.color,
+                color: task.status.color ?? null,
+                position: task.status.position ?? null,
               }
             : null,
+
           priority: task.priority
             ? {
                 id: task.priority.id,
@@ -72,13 +97,15 @@ export class TimelineService {
                 weight: task.priority.weight,
               }
             : null,
+
           assignee: task.assignee
             ? {
                 id: task.assignee.id,
                 fullName: task.assignee.fullName,
-                avatarUrl: task.assignee.avatarUrl,
+                avatarUrl: task.assignee.avatarUrl ?? null,
               }
             : null,
+
           taskType: task.taskType
             ? {
                 id: task.taskType.id,

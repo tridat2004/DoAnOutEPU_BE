@@ -51,7 +51,7 @@ export class TaskCommentsService {
     private readonly taskHistoriesService: TaskHistoriesService,
     private readonly notificationsService: NotificationsService,
     private readonly activityService: ActivityService,
-  ) { }
+  ) {}
 
   async createComment(
     projectId: string,
@@ -107,7 +107,7 @@ export class TaskCommentsService {
             fileUrl: `/uploads/task-comments/${file.filename}`,
             mimeType: file.mimetype,
             sizeBytes: file.size,
-          })
+          }),
         );
 
         await this.taskCommentAttachmentRepository.save(attachments);
@@ -133,13 +133,7 @@ export class TaskCommentsService {
         );
       }
 
-      await this.taskHistoriesService.createHistory(
-        task,
-        author,
-        'comment',
-        null,
-        'comment_added',
-      );
+      await this.taskHistoriesService.createHistory(task, author, 'comment', null, 'comment_added');
 
       await this.activityService.log({
         actor: author,
@@ -179,7 +173,7 @@ export class TaskCommentsService {
           attachments: (freshComment!.attachments || []).map((attachment) => ({
             id: attachment.id,
             fileName: attachment.fileName,
-            fileUrl: attachment.fileUrl,
+            fileUrl: this.getAttachmentDownloadUrl(projectId, taskId, attachment.id),
             mimeType: attachment.mimeType,
             sizeBytes: Number(attachment.sizeBytes || 0),
           })),
@@ -197,11 +191,7 @@ export class TaskCommentsService {
     }
   }
 
-  async getComments(
-    projectId: string,
-    taskId: string,
-    currentUser: AuthenticatedUser,
-  ) {
+  async getComments(projectId: string, taskId: string, currentUser: AuthenticatedUser) {
     const task = await this.taskRepository.findOne({
       where: {
         id: taskId,
@@ -244,14 +234,11 @@ export class TaskCommentsService {
         attachments: (comment.attachments || []).map((attachment) => ({
           id: attachment.id,
           fileName: attachment.fileName,
-          fileUrl: attachment.fileUrl,
+          fileUrl: this.getAttachmentDownloadUrl(projectId, taskId, attachment.id),
           mimeType: attachment.mimeType,
           sizeBytes: Number(attachment.sizeBytes || 0),
         })),
-        reactions: this.buildReactionSummary(
-          comment.reactions || [],
-          currentUser.id,
-        ),
+        reactions: this.buildReactionSummary(comment.reactions || [], currentUser.id),
         createdAt: comment.createdAt,
         updatedAt: comment.updatedAt,
       })),
@@ -265,30 +252,27 @@ export class TaskCommentsService {
         task: {
           id: taskId,
           project: { id: projetcId },
-        }
+        },
       },
       relations: {
         author: true,
         task: {
           project: {
-            owner: true
-          }
+            owner: true,
+          },
         },
         attachments: true,
         reactions: {
-          user: true
-        }
-      }
+          user: true,
+        },
+      },
     });
-    if (!comment) throw AppErrors.task.commentNotFound()
+    if (!comment) throw AppErrors.task.commentNotFound();
 
     return comment;
   }
 
-  private ensureCanManageComment(
-    comment: TaskComment,
-    currentUser: AuthenticatedUser,
-  ) {
+  private ensureCanManageComment(comment: TaskComment, currentUser: AuthenticatedUser) {
     const isAuthor = comment.author.id === currentUser.id;
     const isProjectOwner = comment.task.project?.owner?.id === currentUser.id;
 
@@ -297,13 +281,19 @@ export class TaskCommentsService {
     }
   }
 
-  async updateComment(projectId: string, taskId: string, commentId: string, dto: UpdateTaskCommentDto, currentUser: AuthenticatedUser) {
+  async updateComment(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    dto: UpdateTaskCommentDto,
+    currentUser: AuthenticatedUser,
+  ) {
     const comment = await this.findCommentOrThrow(projectId, taskId, commentId);
     this.ensureCanManageComment(comment, currentUser);
 
     try {
-      comment.content = dto.content.trim()
-      const saved = await this.taskCommentRepository.save(comment)
+      comment.content = dto.content.trim();
+      const saved = await this.taskCommentRepository.save(comment);
 
       return successResponse({
         message: 'Cap nhat comment thanh cong',
@@ -320,7 +310,7 @@ export class TaskCommentsService {
           attachments: (saved.attachments || []).map((attachment) => ({
             id: attachment.id,
             fileName: attachment.fileName,
-            fileUrl: attachment.fileUrl,
+            fileUrl: this.getAttachmentDownloadUrl(projectId, taskId, attachment.id),
             mimeType: attachment.mimeType,
             sizeBytes: Number(attachment.sizeBytes || 0),
           })),
@@ -337,7 +327,16 @@ export class TaskCommentsService {
     }
   }
 
-  async deleteComment(projectId: string, taskId: string, commentId: string, currentUser: AuthenticatedUser) {
+  private getAttachmentDownloadUrl(projectId: string, taskId: string, attachmentId: string) {
+    return `/api/v1/projects/${projectId}/tasks/${taskId}/attachments/${attachmentId}/download`;
+  }
+
+  async deleteComment(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    currentUser: AuthenticatedUser,
+  ) {
     const comment = await this.findCommentOrThrow(projectId, taskId, commentId);
     this.ensureCanManageComment(comment, currentUser);
 
@@ -360,14 +359,8 @@ export class TaskCommentsService {
     }
   }
 
-  private buildReactionSummary(
-    reactions: TaskCommentReaction[] = [],
-    currentUserId?: string,
-  ) {
-    const reactionMap = new Map<
-      string,
-      { emoji: string; count: number; reactedByMe: boolean }
-    >();
+  private buildReactionSummary(reactions: TaskCommentReaction[] = [], currentUserId?: string) {
+    const reactionMap = new Map<string, { emoji: string; count: number; reactedByMe: boolean }>();
 
     for (const reaction of reactions) {
       const existing = reactionMap.get(reaction.emoji);
@@ -436,17 +429,11 @@ export class TaskCommentsService {
         message: 'Them reaction thanh cong',
         data: {
           commentId: freshComment.id,
-          reactions: this.buildReactionSummary(
-            freshComment.reactions || [],
-            currentUser.id,
-          ),
+          reactions: this.buildReactionSummary(freshComment.reactions || [], currentUser.id),
         },
       });
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
 
@@ -495,17 +482,11 @@ export class TaskCommentsService {
         message: 'Xoa reaction thanh cong',
         data: {
           commentId: freshComment.id,
-          reactions: this.buildReactionSummary(
-            freshComment.reactions || [],
-            currentUser.id,
-          ),
+          reactions: this.buildReactionSummary(freshComment.reactions || [], currentUser.id),
         },
       });
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      ) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
 

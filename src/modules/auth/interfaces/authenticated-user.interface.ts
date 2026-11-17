@@ -1,3 +1,5 @@
+import { SystemRole } from '../constants/system-role.constant';
+
 export interface AuthenticatedUser {
   id: string;
   email: string;
@@ -5,4 +7,5 @@ export interface AuthenticatedUser {
   fullName: string;
   avatarUrl?: string;
   isActive: boolean;
+  systemRole: SystemRole;
 }

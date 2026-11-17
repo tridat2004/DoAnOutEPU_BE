@@ -6,13 +6,21 @@ import { User } from './entities/user.entity';
 import { ProjectMember } from '../projects/entities/project-member.entity';
 import { ListUsersDto } from './dto/list-users.dto';
 import { successResponse } from '../../common/response';
-import { AppErrors } from '../../common/exceptions/exception';
+import { AppErrors, AppException } from '../../common/exceptions/exception';
+import { SystemRole } from '../auth/constants/system-role.constant';
 
 type CreateUserInput = {
   email: string;
   username: string;
   fullName: string;
   passwordHash: string;
+  systemRole?: SystemRole;
+};
+
+type UpdateUserInput = {
+  email?: string;
+  username?: string;
+  fullName?: string;
 };
 
 @Injectable()
@@ -43,6 +51,10 @@ export class UsersService {
     });
   }
 
+  countUsers() {
+    return this.userRepository.count();
+  }
+
   async findAll(query: ListUsersDto) {
     const keyword = query.keyword?.trim();
     const limit = query.limit ?? 20;
@@ -58,6 +70,7 @@ export class UsersService {
           'user.fullName',
           'user.avatarUrl',
           'user.isActive',
+          'user.systemRole',
           'user.createdAt',
           'user.updatedAt',
         ])
@@ -105,6 +118,7 @@ export class UsersService {
           fullName: user.fullName,
           avatarUrl: user.avatarUrl,
           isActive: user.isActive,
+          systemRole: user.systemRole,
         })),
       });
     } catch {
@@ -119,8 +133,69 @@ export class UsersService {
       fullName: input.fullName,
       passwordHash: input.passwordHash,
       isActive: true,
+      systemRole: input.systemRole ?? SystemRole.USER,
     });
 
     return this.userRepository.save(user);
+  }
+
+  async updateStatus(userId: string, isActive: boolean) {
+    const user = await this.findById(userId);
+    if (!user) throw AppErrors.auth.userNotFound();
+
+    user.isActive = isActive;
+    return this.userRepository.save(user);
+  }
+
+  async updateSystemRole(userId: string, systemRole: SystemRole) {
+    const user = await this.findById(userId);
+    if (!user) throw AppErrors.auth.userNotFound();
+
+    user.systemRole = systemRole;
+    return this.userRepository.save(user);
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string) {
+    const user = await this.findById(userId);
+    if (!user) throw AppErrors.auth.userNotFound();
+
+    user.passwordHash = passwordHash;
+    return this.userRepository.save(user);
+  }
+
+  async updateProfile(userId: string, input: UpdateUserInput) {
+    if (input.email === undefined && input.username === undefined && input.fullName === undefined) {
+      throw AppErrors.common.validationMessages(['Can it nhat mot truong de cap nhat']);
+    }
+
+    const user = await this.findById(userId);
+    if (!user) throw AppErrors.auth.userNotFound();
+
+    if (input.email !== undefined) {
+      const existingEmail = await this.findByEmail(input.email);
+      if (existingEmail && existingEmail.id !== userId) {
+        throw AppErrors.auth.emailAlreadyExists();
+      }
+      user.email = input.email;
+    }
+
+    if (input.username !== undefined) {
+      const existingUsername = await this.findByUsername(input.username);
+      if (existingUsername && existingUsername.id !== userId) {
+        throw AppErrors.auth.usernameAlreadyExists();
+      }
+      user.username = input.username;
+    }
+
+    if (input.fullName !== undefined) {
+      user.fullName = input.fullName;
+    }
+
+    try {
+      return await this.userRepository.save(user);
+    } catch (error) {
+      if (error instanceof AppException) throw error;
+      throw AppErrors.auth.accountUpdateFailed();
+    }
   }
 }

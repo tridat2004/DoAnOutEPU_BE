@@ -1,11 +1,4 @@
-import {
-  Entity,
-  Column,
-  Index,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, Index, ManyToOne, OneToMany, JoinColumn, DeleteDateColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { TaskType } from './task-type.entity';
@@ -14,8 +7,16 @@ import { Priority } from './priority.entity';
 import { User } from '../../users/entities/user.entity';
 import { TaskComment } from './task-comment.entity';
 import { TaskHistory } from './task-history.entity';
+import { BoardColumn } from '../../board/entities/board-column.entity';
 @Entity('tasks')
 export class Task extends BaseEntity {
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
+  deletedAt!: Date | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'deleted_by_user_id' })
+  deletedBy!: User | null;
+
   @ManyToOne(() => Project, (project) => project.tasks, {
     nullable: false,
     onDelete: 'CASCADE',
@@ -46,6 +47,13 @@ export class Task extends BaseEntity {
   })
   @JoinColumn({ name: 'status_id' })
   status!: TaskStatus;
+
+  @ManyToOne(() => BoardColumn, (column) => column.tasks, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'board_column_id' })
+  boardColumn!: BoardColumn | null;
 
   @ManyToOne(() => Priority, (priority) => priority.tasks, {
     nullable: false,
@@ -83,6 +91,9 @@ export class Task extends BaseEntity {
 
   @Column({ name: 'estimated_hours', type: 'int', nullable: true })
   estimatedHours!: number | null;
+
+  @Column({ type: 'int', default: 0 })
+  position!: number;
 
   @OneToMany(() => TaskComment, (comment) => comment.task)
   comments!: TaskComment[];
